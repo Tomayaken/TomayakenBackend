@@ -11,15 +11,21 @@
 - 日時は `timestamptz`。
 - `created_at` / `updated_at` はDBのデフォルト `now()` を使う。
 
-## ER図
+## テーブルの関係
 
-```text
-households ──< users ──< checkins >── shelters ──< shelter_beacons
-                            │            │
-disasters ──────────────────┘            ├──< shelter_supplies >── supplies
-    │                                    │                            │
-    └───────────────────────< supply_transactions >───────────────────┘
-```
+| 親 | 子 | 外部キー |
+| --- | --- | --- |
+| households | users | `users.household_id` |
+| users | checkins | `checkins.user_id` |
+| users | user_location_points | `user_location_points.user_id` |
+| shelters | checkins | `checkins.shelter_id` |
+| shelters | shelter_beacons | `shelter_beacons.shelter_id` |
+| shelters | shelter_supplies | `shelter_supplies.shelter_id` |
+| shelters | supply_transactions | `supply_transactions.shelter_id` |
+| supplies | shelter_supplies | `shelter_supplies.supply_id` |
+| supplies | supply_transactions | `supply_transactions.supply_id` |
+| disasters | checkins | `checkins.disaster_id` |
+| disasters | supply_transactions | `supply_transactions.disaster_id`（NULL可） |
 
 ## disasters
 
@@ -76,7 +82,6 @@ BLE Beacon（iBeacon）と避難所の対応。1避難所に複数Beaconを置�
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | id | uuid | PK | |
-| resident_registry_ref | text | NULL可 | 将来、住民票の世帯情報と紐づけるための参照（現段階は未使用） |
 | created_at | timestamptz | NOT NULL | |
 
 ## users
@@ -123,15 +128,22 @@ BLE Beacon（iBeacon）と避難所の対応。1避難所に複数Beaconを置�
 | id | uuid | PK | |
 | name | text | NOT NULL | |
 | unit | text | NOT NULL | 単位 |
+| consumption_type | text | NOT NULL, `daily` / `per_person`, デフォルト `daily` | 必要量の数え方（下記） |
+| quantity_per_person | double precision | NOT NULL, >= 0, デフォルト 0 | 1人あたりの必要量 |
 | created_at | timestamptz | NOT NULL | |
 
-データの例は次のとおり。
+- `daily`: 1人1日あたり `quantity_per_person` を消費する（水・食料など）。
+- `per_person`: 1人あたり `quantity_per_person` あればよく、日数では増えない（毛布など）。
+- 到着予測にもとづく必要量の計算に使う（[arrival-forecast.md](./arrival-forecast.md)）。
 
-| name | unit |
-| --- | --- |
-| 水 | bottle |
-| 毛布 | piece |
-| 非常食 | meal |
+データの例は次のとおり（必要量はデモ用の仮の値）。
+
+| name | unit | consumption_type | quantity_per_person |
+| --- | --- | --- | --- |
+| 水 | bottle | daily | 3 |
+| 毛布 | piece | per_person | 1 |
+| 非常食 | meal | daily | 3 |
+| 簡易トイレ | piece | daily | 5 |
 
 ## shelter_supplies
 
@@ -170,6 +182,26 @@ BLE Beacon（iBeacon）と避難所の対応。1避難所に複数Beaconを置�
 ↓
 10本 配布
 ```
+
+## user_location_points
+
+到着予測に使う位置の履歴（[arrival-forecast.md](./arrival-forecast.md)）。直近の一定時間（60分の案）だけ保持する。
+
+| カラム | 型 | 制約 | 説明 |
+| --- | --- | --- | --- |
+| id | uuid | PK | |
+| user_id | uuid | FK → users.id, NOT NULL | 位置を送った利用者 |
+| latitude | double precision | NOT NULL, -90〜90 | |
+| longitude | double precision | NOT NULL, -180〜180 | |
+| accuracy | double precision | NOT NULL, >= 0 | 水平精度（m） |
+| speed | double precision | NULL可, >= 0 | OSが算出した速さ（m/s） |
+| heading | double precision | NULL可, 0以上360未満 | OSが算出した進行方向（度） |
+| recorded_at | timestamptz | NOT NULL | 端末で測位した時刻 |
+| received_at | timestamptz | NOT NULL | サーバーが受信した時刻 |
+
+- インデックス: `(user_id, recorded_at)`
+- 偽装された位置（`isMocked`）と精度の悪い点は、受信時に捨てて保存しない。
+- 受信時に、そのユーザーの保持期間より古い点を削除する。災害終了時はすべて削除する。
 
 ## トランザクション
 

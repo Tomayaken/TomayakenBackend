@@ -42,7 +42,8 @@
 
 | 区分 | 採用技術 |
 | --- | --- |
-| 言語・ランタイム | TypeScript / Node.js |
+| 言語・ランタイム | TypeScript / Node.js 24（開発・本番とも。`mise.toml` で固定） |
+| パッケージ管理 | npm |
 | Webフレームワーク | Hono |
 | バリデーション / API仕様 | Zod / `@hono/zod-openapi` |
 | DB | PostgreSQL |
@@ -73,7 +74,7 @@
 ## 5. ディレクトリ構成
 
 ```text
-backend/
+TomayakenBackend/
 ├ src/
 │  ├ app.ts                 # Honoアプリ本体（ルート登録・middleware）
 │  ├ server.ts              # ローカル用エントリ（@hono/node-server）
@@ -111,6 +112,7 @@ backend/
 │  │  ├ client.ts
 │  │  ├ schema.ts
 │  │  ├ seed.ts
+│  │  ├ reset.ts            # ローカルDBの初期化（開発用）
 │  │  └ migrations/
 │  │
 │  ├ middleware/
@@ -125,6 +127,7 @@ backend/
 │
 ├ infra/                    # AWS CDK
 ├ compose.yaml              # ローカルPostgreSQL
+├ drizzle.config.ts
 ├ package.json
 └ tsconfig.json
 ```
@@ -221,7 +224,7 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 | 項目 | 内容 | 差し込み先 |
 | --- | --- | --- |
 | 本人確認 | マイナンバーカード（JPKI）による本人確認、Cognito等によるトークン認証 | `user-auth.ts` の差し替え |
-| 世帯の検証 | 住民票の世帯情報と照合し、自己申告の世帯をサーバー側で検証 | `households.resident_registry_ref` |
+| 世帯の検証 | 住民票の世帯情報と照合し、自己申告の世帯をサーバー側で検証 | `households` に住民票の世帯情報への参照を追加 |
 | 世帯への参加 | 自分の端末を持つ家族が招待コードで既存世帯に参加 | User / Household API |
 | 在場証明 | ESP32等で定期的に変化するコードをBeaconから発信し、チェックイン時にサーバーで検証して捏造を防ぐ | Beacon API・チェックインAPI |
 | 運営者認証 | Cognitoで運営者を個別に認証し、`created_by` をトークンから取得 | `admin-auth.ts` の差し替え |
