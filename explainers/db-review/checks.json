@@ -1,0 +1,16 @@
+{
+  "checks": [
+    { "name": "constraints", "cmd": "node examples/01-constraints.mjs",
+      "expect": ["2件目の active な災害: 拒否 23505 disasters_single_active_idx", "滞在中の人を別の避難所へチェックイン: 拒否 23505", "マイナスの在庫: 拒否 23514", "closed なのに ended_at が NULL の災害: 受け入れた", "チェックアウトがチェックインより前: 受け入れた", "closed な災害へのチェックイン: 受け入れた", "在庫を履歴なしで書き換え: 受け入れた"] },
+    { "name": "close-race", "cmd": "node examples/02-close-race.mjs",
+      "expect": ["災害の行をロックしない（修正前の手順）: closed な災害に残った滞在中チェックイン 1 件", "災害の行を FOR SHARE で読む: closed な災害に残った滞在中チェックイン 0 件"] },
+    { "name": "first-in-race", "cmd": "node examples/03-first-in-race.mjs",
+      "expect": ["（修正前の手順）: 2人目の入庫 → エラー 23505 shelter_supplies_shelter_id_supply_id_pk / 在庫 100", "INSERT ON CONFLICT DO NOTHING → SELECT FOR UPDATE: 2人目の入庫 → COMMIT / 在庫 150"] },
+    { "name": "seed-rerun", "cmd": "node examples/04-seed-rerun.mjs",
+      "expect": ["1回目の seed: active 1", "デモ用災害を終了: closed 1", "2回目の seed: active 1, closed 1", "seed 後の在庫の合計 4730 / supply_transactions 0 行"] },
+    { "name": "proposed-checks", "cmd": "node examples/05-proposed-checks.mjs",
+      "expect": ["closed なのに ended_at が NULL の災害: 拒否 23514 disasters_ended_at_check", "チェックアウトがチェックインより前: 拒否 23514 checkins_period_check", "正しい終了（closed + ended_at）: 受け入れた"] },
+    { "name": "er-facts", "cmd": "node figures/er-facts.mjs | diff - figures/er.facts.json && echo facts-match",
+      "expect": ["facts-match"] }
+  ]
+}

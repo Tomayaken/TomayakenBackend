@@ -15,6 +15,8 @@
 
 開発時はローカル環境で完結させ、本番・デモ環境のみAWS上で動作させる。
 
+現段階は、1つの自治体で運用することを前提とする。activeな災害はシステム全体で1件までとし、複数の地域で同時に起きた災害を別々に扱うことは[発展構想](#10-発展構想)とする。
+
 ## 2. システム構成
 
 ```text
@@ -42,7 +44,8 @@
 
 | 区分 | 採用技術 |
 | --- | --- |
-| 言語・ランタイム | TypeScript / Node.js |
+| 言語・ランタイム | TypeScript / Node.js 24（開発・本番とも。`mise.toml` で固定） |
+| パッケージ管理 | npm |
 | Webフレームワーク | Hono |
 | バリデーション / API仕様 | Zod / `@hono/zod-openapi` |
 | DB | PostgreSQL |
@@ -73,7 +76,7 @@
 ## 5. ディレクトリ構成
 
 ```text
-backend/
+TomayakenBackend/
 ├ src/
 │  ├ app.ts                 # Honoアプリ本体（ルート登録・middleware）
 │  ├ server.ts              # ローカル用エントリ（@hono/node-server）
@@ -111,6 +114,7 @@ backend/
 │  │  ├ client.ts
 │  │  ├ schema.ts
 │  │  ├ seed.ts
+│  │  ├ reset.ts            # ローカルDBの初期化（開発用）
 │  │  └ migrations/
 │  │
 │  ├ middleware/
@@ -125,6 +129,7 @@ backend/
 │
 ├ infra/                    # AWS CDK
 ├ compose.yaml              # ローカルPostgreSQL
+├ drizzle.config.ts
 ├ package.json
 └ tsconfig.json
 ```
@@ -221,11 +226,12 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 | 項目 | 内容 | 差し込み先 |
 | --- | --- | --- |
 | 本人確認 | マイナンバーカード（JPKI）による本人確認、Cognito等によるトークン認証 | `user-auth.ts` の差し替え |
-| 世帯の検証 | 住民票の世帯情報と照合し、自己申告の世帯をサーバー側で検証 | `households.resident_registry_ref` |
+| 世帯の検証 | 住民票の世帯情報と照合し、自己申告の世帯をサーバー側で検証 | `households` に住民票の世帯情報への参照を追加 |
 | 世帯への参加 | 自分の端末を持つ家族が招待コードで既存世帯に参加 | User / Household API |
 | 在場証明 | ESP32等で定期的に変化するコードをBeaconから発信し、チェックイン時にサーバーで検証して捏造を防ぐ | Beacon API・チェックインAPI |
 | 運営者認証 | Cognitoで運営者を個別に認証し、`created_by` をトークンから取得 | `admin-auth.ts` の差し替え |
 | 避難所ごとの開設管理 | 災害ごとにどの避難所を開設したかを管理（`shelter_openings`） | DB |
+| 自治体ごとの災害 | 複数の地域で同時に起きた災害を別々に開始・終了する。`municipalities` を追加し、`shelters` と `disasters` に `municipality_id` を持たせ、activeな災害を自治体ごとに1件までにする。既存の行は既定の自治体に入れる追加のマイグレーションで移行できる。運営者の認証も自治体ごとに分ける | DB・災害API・`admin-auth.ts` |
 | DB接続 | RDS Proxyで接続数を管理 | インフラ |
 
 ## 11. 設計上のポイント

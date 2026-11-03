@@ -25,6 +25,7 @@
 ## 4. 災害の管理
 
 - `GET /api/v1/disasters/active` でactiveな災害を常に表示する（ヘッダー等）。
+  - 現段階はactiveな災害がシステム全体で1件の前提。将来、自治体ごとに災害を分ける場合は、避難所や自治体を指定して取得する形になる。災害の取得はAPIクライアントの1か所にまとめてほしい。
 - 災害がない場合は「災害を開始」ボタンを表示し、`POST /api/v1/admin/disasters`（body: `{ "name" }`）を呼ぶ。
 - 災害の終了は `POST /api/v1/admin/disasters/:disasterId/close`。**滞在中の全員が自動でチェックアウトされる**ため、確認ダイアログを出す。
 - 過去の災害一覧: `GET /api/v1/admin/disasters`。
