@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { SUPPLY_TRANSACTION_TYPES } from "../db/schema.js";
-import { DateTime, Uuid, itemsOf } from "./common.js";
+import { DateTime, itemsOf, Uuid } from "./common.js";
 
 export const SupplyRef = z
   .object({
@@ -14,9 +14,8 @@ export const ShelterSupply = SupplyRef.extend({
   quantity: z.number().int().openapi({ example: 120 }),
 }).openapi("ShelterSupply");
 
-export const ShelterSupplyItems = itemsOf(ShelterSupply).openapi(
-  "ShelterSupplyItems",
-);
+export const ShelterSupplyItems =
+  itemsOf(ShelterSupply).openapi("ShelterSupplyItems");
 
 export const SupplyOperationRequest = z
   .object({
@@ -25,7 +24,12 @@ export const SupplyOperationRequest = z
       description: "管理画面で入力された運営者名（自己申告）",
       example: "受付担当A",
     }),
-    note: z.string().trim().max(500).optional().openapi({ example: "朝の配布" }),
+    note: z
+      .string()
+      .trim()
+      .max(500)
+      .optional()
+      .openapi({ example: "朝の配布" }),
   })
   .openapi("SupplyOperationRequest");
 

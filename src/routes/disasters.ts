@@ -11,7 +11,7 @@ const getActiveDisaster = createRoute({
   tags: ["Disaster"],
   security: [],
   summary: "activeな災害",
-  description: "activeな災害がない場合は `{ \"disaster\": null }` を返す。",
+  description: 'activeな災害がない場合は `{ "disaster": null }` を返す。',
   responses: {
     200: jsonContent(ActiveDisasterResponse, "activeな災害"),
     ...errorResponses(),

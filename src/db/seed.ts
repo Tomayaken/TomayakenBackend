@@ -69,18 +69,62 @@ const shelterRows = [
 
 // major = 避難所の番号、minor = 避難所内のBeacon番号
 const beaconRows = [
-  { id: "01a19fe0-4a00-7000-8000-000000000101", shelterId: S.elementarySchool, major: 1, minor: 1 },
-  { id: "01a19fe0-4a00-7000-8000-000000000102", shelterId: S.elementarySchool, major: 1, minor: 2 },
-  { id: "01a19fe0-4a00-7000-8000-000000000201", shelterId: S.communityCenter, major: 2, minor: 1 },
-  { id: "01a19fe0-4a00-7000-8000-000000000301", shelterId: S.gymnasium, major: 3, minor: 1 },
+  {
+    id: "01a19fe0-4a00-7000-8000-000000000101",
+    shelterId: S.elementarySchool,
+    major: 1,
+    minor: 1,
+  },
+  {
+    id: "01a19fe0-4a00-7000-8000-000000000102",
+    shelterId: S.elementarySchool,
+    major: 1,
+    minor: 2,
+  },
+  {
+    id: "01a19fe0-4a00-7000-8000-000000000201",
+    shelterId: S.communityCenter,
+    major: 2,
+    minor: 1,
+  },
+  {
+    id: "01a19fe0-4a00-7000-8000-000000000301",
+    shelterId: S.gymnasium,
+    major: 3,
+    minor: 1,
+  },
 ];
 
 // 1人あたりの必要量はデモ用の仮の値
 const supplyRows = [
-  { id: P.water, name: "水", unit: "bottle", consumptionType: "daily", quantityPerPerson: 3 },
-  { id: P.blanket, name: "毛布", unit: "piece", consumptionType: "per_person", quantityPerPerson: 1 },
-  { id: P.meal, name: "非常食", unit: "meal", consumptionType: "daily", quantityPerPerson: 3 },
-  { id: P.toilet, name: "簡易トイレ", unit: "piece", consumptionType: "daily", quantityPerPerson: 5 },
+  {
+    id: P.water,
+    name: "水",
+    unit: "bottle",
+    consumptionType: "daily",
+    quantityPerPerson: 3,
+  },
+  {
+    id: P.blanket,
+    name: "毛布",
+    unit: "piece",
+    consumptionType: "per_person",
+    quantityPerPerson: 1,
+  },
+  {
+    id: P.meal,
+    name: "非常食",
+    unit: "meal",
+    consumptionType: "daily",
+    quantityPerPerson: 3,
+  },
+  {
+    id: P.toilet,
+    name: "簡易トイレ",
+    unit: "piece",
+    consumptionType: "daily",
+    quantityPerPerson: 5,
+  },
 ] as const;
 
 const stockRows = [

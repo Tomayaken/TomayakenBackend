@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { DateTime, Name, Uuid, itemsOf } from "./common.js";
+import { DateTime, itemsOf, Name, Uuid } from "./common.js";
 import { ShelterRef } from "./shelter.js";
 import { User, UserRef } from "./user.js";
 
@@ -56,9 +56,8 @@ export const AdminCheckin = z
   })
   .openapi("AdminCheckin");
 
-export const AdminCheckinItems = itemsOf(AdminCheckin).openapi(
-  "AdminCheckinItems",
-);
+export const AdminCheckinItems =
+  itemsOf(AdminCheckin).openapi("AdminCheckinItems");
 
 export const AdminCheckinQuery = z.object({
   status: z

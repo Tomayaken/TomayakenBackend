@@ -12,7 +12,8 @@ export const Shelter = z
       example: 132,
     }),
     isOverCapacity: z.boolean().openapi({
-      description: "currentOccupancy > capacity。満員でもチェックインは拒否しない",
+      description:
+        "currentOccupancy > capacity。満員でもチェックインは拒否しない",
       example: false,
     }),
     latitude: z.number().nullable().openapi({ example: 35.6812 }),

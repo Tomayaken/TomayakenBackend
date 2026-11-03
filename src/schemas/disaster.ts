@@ -18,6 +18,11 @@ export const ActiveDisasterResponse = z
 
 export const CreateDisasterRequest = z
   .object({
-    name: z.string().trim().min(1).max(200).openapi({ example: "2026年11月 ○○地震" }),
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .openapi({ example: "2026年11月 ○○地震" }),
   })
   .openapi("CreateDisasterRequest");

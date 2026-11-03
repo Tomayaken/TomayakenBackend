@@ -1,5 +1,5 @@
-import { createMiddleware } from "hono/factory";
 import { z } from "@hono/zod-openapi";
+import { createMiddleware } from "hono/factory";
 import { AppError } from "../errors/app-error.js";
 import type { AppEnv } from "../types.js";
 
@@ -17,7 +17,10 @@ const userIdSchema = z.uuid();
 export const userAuth = createMiddleware<AppEnv>(async (c, next) => {
   const parsed = userIdSchema.safeParse(c.req.header(USER_ID_HEADER));
   if (!parsed.success) {
-    throw new AppError("UNAUTHORIZED", `${USER_ID_HEADER} header is missing or invalid.`);
+    throw new AppError(
+      "UNAUTHORIZED",
+      `${USER_ID_HEADER} header is missing or invalid.`,
+    );
   }
   c.set("userId", parsed.data);
   await next();

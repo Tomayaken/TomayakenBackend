@@ -1,3 +1,6 @@
+# プロジェクト名を固定し、どの worktree から起動しても同じコンテナとボリュームを使う
+name: tomayakenbackend
+
 services:
   db:
     image: postgres:17

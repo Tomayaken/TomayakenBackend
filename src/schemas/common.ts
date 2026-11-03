@@ -18,16 +18,14 @@ export const ErrorResponse = z
     error: z.object({
       code: z.enum(Object.keys(ERROR_STATUS) as [ErrorCode, ...ErrorCode[]]),
       message: z.string().openapi({
-        description: "開発者向けの説明。画面表示の文言はクライアントが code から決める",
+        description:
+          "開発者向けの説明。画面表示の文言はクライアントが code から決める",
       }),
-      details: z
-        .record(z.string(), z.unknown())
-        .optional()
-        .openapi({
-          type: "object",
-          additionalProperties: true,
-          description: "エラーの補足情報。内容はエラーコードごとに異なる",
-        }),
+      details: z.record(z.string(), z.unknown()).optional().openapi({
+        type: "object",
+        additionalProperties: true,
+        description: "エラーの補足情報。内容はエラーコードごとに異なる",
+      }),
     }),
   })
   .openapi("ErrorResponse");

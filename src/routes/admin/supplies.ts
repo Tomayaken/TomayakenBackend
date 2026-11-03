@@ -19,7 +19,10 @@ const supplyIn = createRoute({
   description:
     "在庫更新と履歴の記録を1トランザクションで行う。activeな災害があれば履歴に紐づける（なくても入庫できる）。",
   security: adminSecurity,
-  request: { params: ShelterSupplyParams, body: jsonBody(SupplyOperationRequest) },
+  request: {
+    params: ShelterSupplyParams,
+    body: jsonBody(SupplyOperationRequest),
+  },
   responses: {
     200: jsonContent(ShelterSupply, "更新後の在庫"),
     ...errorResponses(
@@ -40,7 +43,10 @@ const supplyOut = createRoute({
   description:
     "在庫更新と履歴の記録を1トランザクションで行う。在庫より多い数量は INSUFFICIENT_SUPPLY。",
   security: adminSecurity,
-  request: { params: ShelterSupplyParams, body: jsonBody(SupplyOperationRequest) },
+  request: {
+    params: ShelterSupplyParams,
+    body: jsonBody(SupplyOperationRequest),
+  },
   responses: {
     200: jsonContent(ShelterSupply, "更新後の在庫"),
     ...errorResponses(

@@ -13,6 +13,10 @@
     "openapi": "tsx src/scripts/export-openapi.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
@@ -36,6 +40,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.4",
     "@types/node": "24",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",

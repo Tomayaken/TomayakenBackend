@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint / Typecheck / Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # mise.toml の Node.js バージョンを使う
+      - uses: jdx/mise-action@v2
+
+      - run: npm ci
+
+      - name: Biome (lint / format / import order)
+        run: npx biome ci .
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: docs/openapi.json が最新か
+        run: |
+          npm run openapi
+          git diff --exit-code docs/openapi.json || {
+            echo "::error::docs/openapi.json is outdated. Run 'npm run openapi' and commit the result."
+            exit 1
+          }
+
+      - name: マイグレーションがスキーマと一致しているか
+        run: |
+          npx drizzle-kit check
+          npx drizzle-kit generate
+          if [ -n "$(git status --porcelain src/db/migrations)" ]; then
+            git status --porcelain src/db/migrations
+            echo "::error::src/db/schema.ts has changes without a migration. Run 'npm run db:generate' and commit the result."
+            exit 1
+          fi
+
+  db:
+    name: Migrate / Seed
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: tomayaken
+          POSTGRES_PASSWORD: tomayaken
+          POSTGRES_DB: tomayaken
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tomayaken -d tomayaken"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://tomayaken:tomayaken@localhost:5432/tomayaken
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: npm ci
+      - run: npm run db:migrate
+      # 2回流して、seed が何度実行しても同じ状態になることを確かめる
+      - run: npm run db:seed
+      - run: npm run db:seed
