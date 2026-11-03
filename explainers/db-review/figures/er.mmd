@@ -1,0 +1,27 @@
+---
+config:
+  themeVariables:
+    fontSize: 18px
+  flowchart:
+    wrappingWidth: 480
+    rankSpacing: 36
+    nodeSpacing: 14
+    padding: 6
+    diagramPadding: 4
+---
+flowchart LR
+  households["households"] --> users["users"]
+  users --> checkins["checkins"]
+  users --> user_location_points["user_location_points"]
+  disasters["disasters"] --> checkins
+  disasters --> supply_transactions["supply_transactions"]
+  shelters["shelters"] --> checkins
+  shelters --> shelter_beacons["shelter_beacons"]
+  shelters --> shelter_supplies["shelter_supplies"]
+  shelters --> supply_transactions
+  supplies["supplies"] --> shelter_supplies
+  supplies --> supply_transactions
+  classDef rule fill:#fff4d6,stroke:#8a6100,color:#1a1a1a
+  classDef plain fill:#eef2f7,stroke:#44546a,color:#1a1a1a
+  class checkins,disasters,shelter_supplies,supply_transactions,user_location_points rule
+  class households,users,shelters,shelter_beacons,supplies plain

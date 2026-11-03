@@ -1,0 +1,27 @@
+{
+  "labels": [
+    "checkins",
+    "disasters",
+    "households",
+    "shelter_beacons",
+    "shelter_supplies",
+    "shelters",
+    "supplies",
+    "supply_transactions",
+    "user_location_points",
+    "users"
+  ],
+  "edges": [
+    "disasters->checkins",
+    "disasters->supply_transactions",
+    "households->users",
+    "shelters->checkins",
+    "shelters->shelter_beacons",
+    "shelters->shelter_supplies",
+    "shelters->supply_transactions",
+    "supplies->shelter_supplies",
+    "supplies->supply_transactions",
+    "users->checkins",
+    "users->user_location_points"
+  ]
+}

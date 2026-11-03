@@ -1,0 +1,4 @@
+node_modules/
+.figure-check/
+test-results/
+.first-reader/
