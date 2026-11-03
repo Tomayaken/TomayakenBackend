@@ -15,7 +15,10 @@ cp .env.example .env
 npm run db:up        # PostgreSQL を起動
 npm run db:migrate   # マイグレーションを適用
 npm run db:seed      # 初期データを投入
+npm run dev          # http://localhost:3000 でAPIサーバーを起動（変更を監視）
 ```
+
+APIドキュメントは http://localhost:3000/api/v1/docs で見られる。
 
 ## scripts
 
@@ -27,6 +30,10 @@ npm run db:seed      # 初期データを投入
 | `npm run db:seed` | 初期データを投入（何度実行しても同じ状態になる） |
 | `npm run db:reset` | ローカルDBを空にして、マイグレーションと seed を流し直す |
 | `npm run db:studio` | Drizzle Studio でDBを確認 |
+| `npm run dev` | APIサーバーを起動（ファイルの変更で再起動） |
+| `npm run start` | APIサーバーを起動 |
+| `npm run openapi` | OpenAPI を `docs/openapi.json` に書き出す（ルートやスキーマを変えたら実行してコミットする） |
+| `npm test` | テスト（Vitest） |
 | `npm run typecheck` | 型チェック |
 
 ## 初期データ（seed）
