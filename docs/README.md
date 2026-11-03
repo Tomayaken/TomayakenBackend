@@ -8,6 +8,7 @@
 | [database.md](./database.md) | DB設計（テーブル定義・リレーション・トランザクション） |
 | [api.md](./api.md) | API設計（エンドポイント・認証区分・リクエスト/レスポンス・エラー形式） |
 | [ble-checkin.md](./ble-checkin.md) | BLEによる避難所検出とチェックインの流れ |
+| [arrival-forecast.md](./arrival-forecast.md) | 位置情報による到着予測と物資配分（検討中。パラメータとその理由を含む） |
 | [infrastructure.md](./infrastructure.md) | 実行環境（ローカル開発・本番AWS構成・デプロイ・環境変数） |
 
 ## クライアントへの依頼事項
