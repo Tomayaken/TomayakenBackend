@@ -209,17 +209,22 @@ BLE Beacon（iBeacon）と避難所の対応。1避難所に複数Beaconを置�
 
 ```text
 BEGIN
-  shelter_supplies を SELECT ... FOR UPDATE（入庫で行がなければ INSERT）
+  入庫の場合: shelter_supplies に quantity = 0 の行を INSERT ... ON CONFLICT DO NOTHING
+  shelter_supplies を SELECT ... FOR UPDATE（配布で行がなければ在庫0として扱う）
   配布の場合: quantity < 要求数 なら INSUFFICIENT_SUPPLY でROLLBACK
   shelter_supplies UPDATE
   supply_transactions INSERT
 COMMIT
 ```
 
+- 行を先に作ってからロックする。`SELECT ... FOR UPDATE` は存在しない行をロックできないため、「行がなければ INSERT」にすると、同じ物資への初回入庫が同時に来たとき、2件目が主キー違反で失敗する。
+
 ### 世帯まとめてチェックイン
 
 ```text
 BEGIN
+  disasters を SELECT ... WHERE status = 'active' FOR SHARE
+    - なければ NO_ACTIVE_DISASTER でROLLBACK
   対象ユーザー全員の滞在中checkinを確認
     - 同じ避難所に滞在中のユーザー → 既存レコードを返す（冪等）
     - 別の避難所に滞在中のユーザーが1人でもいる → ALREADY_CHECKED_IN でROLLBACK
@@ -236,3 +241,5 @@ BEGIN
     WHERE disaster_id = :id AND checked_out_at IS NULL
 COMMIT
 ```
+
+- チェックインは active な災害の行を `FOR SHARE` で読む（[世帯まとめてチェックイン](#世帯まとめてチェックイン)）。こうすると、終了の `disasters UPDATE` は進行中のチェックインの COMMIT を待ち、続く `checkins UPDATE` がそのチェックインも閉じる。ロックしないと、終了の直前に災害IDを読んだチェックインが、終了後に滞在中のまま残る。

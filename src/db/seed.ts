@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 import { createDb } from "./client.js";
 import {
   disasters,
@@ -136,22 +137,23 @@ async function main() {
         });
       await tx.insert(shelterSupplies).values(stockRows).onConflictDoNothing();
 
-      // activeな災害がなければデモ用に1件作る
+      // activeな災害がなければデモ用に1件作る。初回は固定IDで作り、
+      // その災害が終了済みなら新しいIDで作る（終了済みの災害の履歴は残す）
       const active = await tx
         .select({ id: disasters.id })
         .from(disasters)
         .where(sql`${disasters.status} = 'active'`)
         .limit(1);
       if (active.length === 0) {
-        await tx
+        const demo = { name: "デモ用災害", status: "active" as const, startedAt: new Date() };
+        const created = await tx
           .insert(disasters)
-          .values({
-            id: SEED_IDS.disaster,
-            name: "デモ用災害",
-            status: "active",
-            startedAt: new Date(),
-          })
-          .onConflictDoNothing();
+          .values({ id: SEED_IDS.disaster, ...demo })
+          .onConflictDoNothing()
+          .returning({ id: disasters.id });
+        if (created.length === 0) {
+          await tx.insert(disasters).values({ id: uuidv7(), ...demo });
+        }
       }
     });
     console.log("seed: done");
