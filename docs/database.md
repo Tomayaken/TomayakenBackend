@@ -31,6 +31,8 @@
 
 災害（＝避難所の開設期間）。同時にactiveにできるのは1件まで。
 
+1つの自治体で運用する前提で、activeな災害はシステム全体で1件とする。自治体ごとに分ける場合は、`municipality_id` を追加し、このインデックスを `UNIQUE (municipality_id) WHERE status = 'active'` に張り替える（[発展構想](./architecture.md#10-発展構想)）。
+
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | id | uuid | PK | |
