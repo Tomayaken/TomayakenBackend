@@ -39,5 +39,5 @@ async function run(label, lockDisaster) {
   await close.end();
 }
 
-await run('災害の行をロックしない（設計書の手順）', false);
+await run('災害の行をロックしない（修正前の手順）', false);
 await run('災害の行を FOR SHARE で読む', true);

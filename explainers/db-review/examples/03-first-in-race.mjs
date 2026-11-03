@@ -37,5 +37,5 @@ async function run(label, upsert) {
   await b.end();
 }
 
-await run('SELECT FOR UPDATE → なければ INSERT（設計書の手順）', false);
+await run('SELECT FOR UPDATE → なければ INSERT（修正前の手順）', false);
 await run('INSERT ON CONFLICT DO NOTHING → SELECT FOR UPDATE', true);

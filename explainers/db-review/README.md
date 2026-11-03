@@ -10,32 +10,34 @@
 
 この資料は、PR #1 のスキーマが DB で守る 3 つのルールは期待どおり違反を拒否するが、設計書の手順のうち 2 つは同時実行で壊れ、seed にも README と食い違う動きが 1 つあることを伝える。
 
+この 3 か所は、同じ PR の後続のコミットで直した（6 節）。各節は「修正前の動き → 修正後の手順」の順に書いている。
+
 読み終えたら、次の 3 つを判定できるようになる。
 
 1. PR #1 をこのままマージしてよいか。直すならどこにコメントするか。
 2. どのルールが DB で守られ、どのルールが Service の実装に残っているか。
-3. API を実装するとき、設計書の手順のどこを変えるべきか。
+3. API を実装するとき、設計書のどの手順に従えば競合を防げるか。
 
 | 節 | 役割 | 見せるもの | なぜ |
 |---|---|---|---|
 | 0 | レビュー結果を 1 枚にする | 判定表 | マージ可否を最初に決められるように |
 | 1 | テーブルのどこにルールがあるかを示す | 関係図 | 2〜4 節の実験がどの表の話かを追えるように |
 | 2 | DB が拒むものと受け入れるものを分ける | 01 の出力 | 「DB にある」と「Service に残る」の境目を見せる |
-| 3 | 災害の終了とチェックインの競合 | 02 の出力 | 設計書の手順の穴 1 |
-| 4 | 初回入庫の競合 | 03 の出力 | 設計書の手順の穴 2 |
+| 3 | 災害の終了とチェックインの競合 | 02 の出力 | 修正前の手順の穴 1 |
+| 4 | 初回入庫の競合 | 03 の出力 | 修正前の手順の穴 2 |
 | 5 | seed の再実行 | 04 の出力 | README との食い違い |
 | 6 | コメント案 | チェックリスト | そのまま PR に書ける形にする |
 
 ## 0. 一枚で
 
-**結論：スキーマ自体はマージしてよい。ただし `docs/database.md` の手順 2 つと `seed.ts` の 1 か所は、マージ前に直すのがよい。**
+**結論：スキーマはマージしてよい。マージ前に直すべき 3 か所（`docs/database.md` の手順 2 つと `seed.ts`）は修正済みで、残りは「確認」の 3 行を決めるだけ。**
 
 | 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |
 |---|---|---|---|---|
 | PR に書いた 3 つの DB 制約（active 1 件・滞在 1 人 1 件・在庫 ≥ 0） | 3 つとも拒否（23505 / 23505 / 23514） | PR 本文の「確認したこと」 | OK | なし |
-| 災害の終了とチェックインが同時に走る | closed な災害に滞在中チェックイン 1 件 | 設計書「終了時は滞在中のチェックインをすべてチェックアウトする」 | 要対処 | チェックイン側で災害の行を `FOR SHARE` で読む（実験で 0 件） |
-| 在庫の行がない物資に 2 人が同時に入庫 | 2 人目が 23505 で失敗、在庫 100 | 2 人分が入って 150 | 要対処 | 先に `INSERT ... ON CONFLICT DO NOTHING` してからロック（実験で 150） |
-| デモ用災害を終了したあと seed を再実行 | active 0 件（closed 1） | README「active な災害がない場合のみ active で 1 件作成する」 | 要対処 | 固定 ID の災害を active に戻すか、新しい ID で作る |
+| 災害の終了とチェックインが同時に走る | 修正前の手順で 1 件、修正後（`FOR SHARE`）で 0 件が closed な災害に残った | 設計書「終了時は滞在中のチェックインをすべてチェックアウトする」 | OK（修正済み） | API 実装で修正後の手順に従う |
+| 在庫の行がない物資に 2 人が同時に入庫 | 修正前の手順で 2 人目が 23505・在庫 100、修正後で在庫 150 | 2 人分が入って 150 | OK（修正済み） | API 実装で修正後の手順に従う |
+| デモ用災害を終了したあと seed を再実行 | active 1, closed 1 | README「active な災害がない場合のみ active で 1 件作成する」 | OK（修正済み） | なし |
 | closed で `ended_at` が NULL・チェックアウトがチェックインより前 | どちらも受け入れた | 文脈による | 確認 | CHECK を 2 本足すか決める（足すと拒否できることは実験済み） |
 | closed な災害へのチェックイン | 受け入れた | 文脈による | 確認 | Service で守る前提でよいか決める |
 | seed の在庫と履歴 | 在庫合計 4730 / 履歴 0 行 | 文脈による | 確認 | 履歴から在庫を再計算する運用をするなら、seed でも IN を入れる |
@@ -99,89 +101,88 @@ await c.query(`ALTER TABLE checkins ADD CONSTRAINT checkins_period_check
 ## 3. 災害の終了とチェックインの競合
 
 設計書の「災害の終了」は、終了の時点で滞在中のチェックインを全部閉じます。
+修正前のチェックインの手順は、active な災害の ID をロックせずに読んでいました。
 
-<!-- source: ../../docs/database.md -->
-```text
-BEGIN
-  disasters UPDATE status = 'closed', ended_at = now()
-  checkins UPDATE checked_out_at = ended_at
-    WHERE disaster_id = :id AND checked_out_at IS NULL
-COMMIT
-```
-
-ところが、チェックインが「active な災害の ID を読んだ」後、INSERT する前に終了が COMMIT すると、終了の UPDATE はまだ無い行を閉じられません。
+この場合、チェックインが「active な災害の ID を読んだ」後、INSERT する前に終了が COMMIT すると、終了の UPDATE はまだ無い行を閉じられません。
 実験では、PostgreSQL の既定（READ COMMITTED）で 2 つの接続をこの順に動かしました。
 
 <!-- output: close-race -->
 ```
-災害の行をロックしない（設計書の手順）: closed な災害に残った滞在中チェックイン 1 件
+災害の行をロックしない（修正前の手順）: closed な災害に残った滞在中チェックイン 1 件
 災害の行を FOR SHARE で読む: closed な災害に残った滞在中チェックイン 0 件
 ```
 
 **チェックイン側が `SELECT ... FROM disasters WHERE status = 'active' FOR SHARE` で読めば、終了の UPDATE はチェックインの COMMIT を待ち、その後の `checkins UPDATE` が新しい行も閉じます。**
-残った 1 件は、その利用者が次の災害でチェックインしようとしたとき、部分ユニークインデックスに当たって `ALREADY_CHECKED_IN` になります。
-
-## 4. 初回入庫の競合
-
-設計書の入庫は「`SELECT ... FOR UPDATE`、行がなければ INSERT」です。
+修正後の設計書は、チェックインの最初にこの読み方をします。
 
 <!-- source: ../../docs/database.md -->
 ```text
 BEGIN
-  shelter_supplies を SELECT ... FOR UPDATE（入庫で行がなければ INSERT）
+  disasters を SELECT ... WHERE status = 'active' FOR SHARE
+    - なければ NO_ACTIVE_DISASTER でROLLBACK
 ```
 
+修正前の手順で残った 1 件は、その利用者が次の災害でチェックインしようとしたとき、部分ユニークインデックスに当たって `ALREADY_CHECKED_IN` になります。
+
+## 4. 初回入庫の競合
+
+修正前の設計書の入庫は「`SELECT ... FOR UPDATE`、行がなければ INSERT」でした。
 行が無いとき、`FOR UPDATE` はロックする相手が無いので、2 人とも「無い」と読んで INSERT します。
 
 <!-- output: first-in-race -->
 ```
-SELECT FOR UPDATE → なければ INSERT（設計書の手順）: 2人目の入庫 → エラー 23505 shelter_supplies_shelter_id_supply_id_pk / 在庫 100
+SELECT FOR UPDATE → なければ INSERT（修正前の手順）: 2人目の入庫 → エラー 23505 shelter_supplies_shelter_id_supply_id_pk / 在庫 100
 INSERT ON CONFLICT DO NOTHING → SELECT FOR UPDATE: 2人目の入庫 → COMMIT / 在庫 150
 ```
 
 2 人目は主キー違反（23505）で失敗し、50 本の入庫が消えます。
 先に在庫 0 の行を `ON CONFLICT DO NOTHING` で作ってからロックすれば、2 人目は 1 人目の COMMIT を待って足し込みます。
+修正後の設計書は、この順にしています。
+
+<!-- source: ../../docs/database.md -->
+```text
+BEGIN
+  入庫の場合: shelter_supplies に quantity = 0 の行を INSERT ... ON CONFLICT DO NOTHING
+  shelter_supplies を SELECT ... FOR UPDATE（配布で行がなければ在庫0として扱う）
+```
+
 Service で 23505 を受けて再試行する方法もありますが、手順を変えるほうが単純です。
 
 ## 5. seed の再実行
 
 README は「active な災害がない場合のみ、デモ用災害を active で 1 件作成する」と書いています。
-実際には、デモ用災害を終了した後で seed を流しても、active な災害はできません。
+修正前は、デモ用災害を終了した後で seed を流しても、active な災害ができませんでした。
+固定 ID の災害がすでに（closed で）あるため、`onConflictDoNothing` が何もしなかったからです。
+
+修正後は、固定 ID で作れなかったときに新しい ID で作ります。
+
+<!-- source: ../../src/db/seed.ts -->
+```ts
+        const created = await tx
+          .insert(disasters)
+          .values({ id: SEED_IDS.disaster, ...demo })
+          .onConflictDoNothing()
+          .returning({ id: disasters.id });
+        if (created.length === 0) {
+          await tx.insert(disasters).values({ id: uuidv7(), ...demo });
+        }
+```
 
 <!-- output: seed-rerun -->
 ```
 1回目の seed: active 1
 デモ用災害を終了: closed 1
-2回目の seed: closed 1
+2回目の seed: active 1, closed 1
 seed 後の在庫の合計 4730 / supply_transactions 0 行
 ```
 
-原因は、固定 ID の災害がすでに（closed で）あるため、`onConflictDoNothing` が何もしないことです。
+終了済みのデモ用災害を active に戻さないのは、その災害のチェックイン履歴に新しいチェックインが混ざらないようにするためです。
 
-<!-- source: ../../src/db/seed.ts -->
-```ts
-      if (active.length === 0) {
-        await tx
-          .insert(disasters)
-          .values({
-            id: SEED_IDS.disaster,
-            name: "デモ用災害",
-            status: "active",
-            startedAt: new Date(),
-          })
-          .onConflictDoNothing();
-      }
-```
+## 6. 対応状況
 
-デモで「災害を終了」を見せた後、`db:seed` では戻らず、`db:reset` が要ります。
-直し方は、`onConflictDoUpdate` で `status = 'active'`・`ended_at = NULL` に戻すか、ID を新しく作るかです。
-前者は終了済みの災害のチェックイン履歴と同じ災害に戻るので、デモの用途なら後者が素直です。
-
-## 6. PR に書くコメント案
-
-- [ ] `docs/database.md` 世帯チェックイン：active な災害を `FOR SHARE` で読む手順を足す（3 節）
-- [ ] `docs/database.md` 物資の入庫：`INSERT ... ON CONFLICT DO NOTHING` → `SELECT ... FOR UPDATE` に変える（4 節）
-- [ ] `src/db/seed.ts`：終了済みのデモ用災害しか無いとき、active な災害を作る（5 節）
+- [x] `docs/database.md` 世帯チェックイン：active な災害を `FOR SHARE` で読む手順を足す（3 節）
+- [x] `docs/database.md` 物資の入庫：`INSERT ... ON CONFLICT DO NOTHING` → `SELECT ... FOR UPDATE` に変える（4 節）
+- [x] `src/db/seed.ts`：終了済みのデモ用災害しか無いとき、active な災害を作る（5 節）
 - [ ] `disasters_ended_at_check` と `checkins_period_check` を足すか決める（2 節）
 - [ ] seed の在庫に対応する IN の履歴を入れるか決める（0 節の最後の行）
 
@@ -214,12 +215,12 @@ CHECK はその行の中の値しか見られず、`disasters.status` は別の�
 
 </details>
 
-4. デモの後で `npm run db:seed` を流しても、アプリがチェックインできないのはどういう状態のときか。
+4. 修正前の seed で、デモの後に `npm run db:seed` を流してもアプリがチェックインできなかったのは、どういう状態のときか。
 
 <details><summary>答え</summary>
 
 デモ用災害を終了済みで、ほかに active な災害が無いときです。
-seed は固定 ID の災害が既にあると何もしないので、active な災害が 0 件のまま残ります（5 節）。
+修正前の seed は固定 ID の災害が既にあると何もしなかったので、active な災害が 0 件のまま残りました（5 節）。
 
 </details>
 
