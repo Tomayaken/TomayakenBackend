@@ -1,12 +1,13 @@
 # 管理画面（React）への依頼事項
 
-バックエンドの設計に合わせて、運営者向け管理画面で実装してほしいことをまとめる。API仕様の詳細は `GET /api/v1/openapi.json` を正とし、概要は [api.md](../api.md) を参照。
+バックエンドの設計に合わせて、運営者向け管理画面で実装してほしいことをまとめる。API仕様の詳細は OpenAPI（`docs/openapi.json`。サーバー起動中は `/api/v1/docs` でも見られる）を正とし、概要は [api.md](../api.md) を参照。
 
 ## 1. 技術・接続
 
 - React + Vite。本番は S3 + CloudFront に配置する。
 - API の Base URL は環境変数（例: `VITE_API_BASE_URL`）で切り替える。
-- OpenAPI から型を生成して使うことを推奨（例: `openapi-typescript` + `openapi-fetch`）。
+- OpenAPI（リポジトリの `docs/openapi.json`）から型を生成して使うことを推奨（例: `openapi-typescript` + `openapi-fetch`）。
+- サーバーの実装を待たずに開発できるよう、`docs/openapi.json` からモックサーバーを立てられる（例: `npx @stoplight/prism-cli mock docs/openapi.json`）。
 - 本番のOriginはバックエンドの `CORS_ORIGIN` に登録する必要があるため、CloudFrontのドメインが決まったら共有してほしい。
 - エラーレスポンスは `{ "error": { "code", "message", "details" } }`。画面の文言は `code` から決める（[エラーコード一覧](../api.md#エラー形式)）。
 

@@ -18,4 +18,14 @@
 | [client-requests/admin-web.md](./client-requests/admin-web.md) | 運営者向け管理画面（React） |
 | [client-requests/mobile-app.md](./client-requests/mobile-app.md) | 利用者向けアプリ（Flutter） |
 
-詳細なリクエスト/レスポンス仕様は、サーバーが公開する OpenAPI（`/api/v1/openapi.json`）を正とする。`api.md` は概要と設計意図を記述する。
+詳細なリクエスト/レスポンス仕様は OpenAPI を正とする。`api.md` は概要と設計意図を記述する。
+
+仕様は次の3か所で確認できる。
+
+| 場所 | 用途 |
+| --- | --- |
+| `docs/openapi.json`（リポジトリ内） | サーバーを起動せずにクライアントのコード生成やモックサーバーに使う。`npm run openapi` で更新する |
+| `GET /api/v1/openapi.json` | 起動中のサーバーが配信する仕様 |
+| `GET /api/v1/docs` | ブラウザで見られるAPIドキュメント（Swagger UI） |
+
+まだ実装していないエンドポイントも仕様には載っており、呼ぶと `501 NOT_IMPLEMENTED` を返す。

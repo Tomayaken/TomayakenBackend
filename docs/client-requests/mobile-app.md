@@ -1,11 +1,12 @@
 # 利用者アプリ（Flutter）への依頼事項
 
-バックエンドの設計に合わせて、利用者アプリ側で実装してほしいことをまとめる。API仕様の詳細は `GET /api/v1/openapi.json` を正とし、概要は [api.md](../api.md) を参照。
+バックエンドの設計に合わせて、利用者アプリ側で実装してほしいことをまとめる。API仕様の詳細は OpenAPI（`docs/openapi.json`。サーバー起動中は `/api/v1/docs` でも見られる）を正とし、概要は [api.md](../api.md) を参照。
 
 ## 1. API接続
 
 - Base URL は環境ごとに切り替えられるようにする（ローカル: 開発PCのLAN IP:3000 / 本番: API GatewayのURL）。
-- OpenAPI から `openapi-generator`（dart / dart-dio）でクライアントを生成して使うことを推奨。
+- OpenAPI（リポジトリの `docs/openapi.json`）から `openapi-generator`（dart / dart-dio）でクライアントを生成して使うことを推奨。
+- サーバーの実装を待たずに開発できるよう、`docs/openapi.json` からモックサーバーを立てられる（例: `npx @stoplight/prism-cli mock docs/openapi.json`）。
 - エラーレスポンスは `{ "error": { "code", "message", "details" } }`。画面の文言は `message` ではなく `code` から決める（[エラーコード一覧](../api.md#エラー形式)）。
 
 ## 2. 利用者の識別（疑似認証）

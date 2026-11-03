@@ -1,6 +1,16 @@
 # API設計
 
-詳細なリクエスト/レスポンスのスキーマは、`@hono/zod-openapi` が生成する OpenAPI（`GET /api/v1/openapi.json`）を正とする。本書は概要と設計意図を記述する。
+詳細なリクエスト/レスポンスのスキーマは、`@hono/zod-openapi` が生成する OpenAPI を正とする。本書は概要と設計意図を記述する。
+
+仕様は次の3か所で確認できる。
+
+| 場所 | 用途 |
+| --- | --- |
+| `docs/openapi.json`（リポジトリ内） | サーバーを起動せずにクライアントのコード生成やモックサーバーに使う。`npm run openapi` で更新する |
+| `GET /api/v1/openapi.json` | 起動中のサーバーが配信する仕様 |
+| `GET /api/v1/docs` | ブラウザで見られるAPIドキュメント（Swagger UI） |
+
+まだ実装していないエンドポイントも仕様には載っており、呼ぶと `501 NOT_IMPLEMENTED` を返す。
 
 ## 共通ルール
 
@@ -13,6 +23,8 @@
 | 日時 | ISO 8601（オフセット付き） 例: `2026-11-03T13:30:00+09:00` |
 | 一覧 | 配列を直接返さず `{ "items": [...] }` で包む |
 | ページング | なし（デモ規模） |
+| ステータス | 作成系（チェックイン、世帯メンバー追加、災害の開始、代理チェックイン）は `201`、それ以外の成功は `200` |
+| リクエストボディ | ボディを取るPOSTは、項目がすべて任意でも `{}` を送る |
 
 ## 認証区分
 
@@ -37,7 +49,8 @@
 | GET | `/beacons/shelter?major=&minor=` | Beaconから避難所を取得 | App |
 | GET | `/disasters/active` | activeな災害 | App, Admin |
 | GET | `/shelters/:shelterId/supplies` | 物資の在庫一覧 | App, Admin |
-| GET | `/openapi.json` | API仕様 | 開発用 |
+| GET | `/openapi.json` | API仕様（OpenAPI 3.0） | 開発用 |
+| GET | `/docs` | APIドキュメント（Swagger UI） | 開発用 |
 
 ### 利用者（`X-User-Id`）
 
@@ -210,7 +223,7 @@ Request:
 }
 ```
 
-- `userIds` は任意。省略時は自分（`X-User-Id`）のみ。
+- `userIds` は任意。省略時は自分（`X-User-Id`）のみ。その場合もボディは `{}` を送る。
 - 指定できるのは自分と同じ世帯のメンバーのみ。
 - 全員分を1トランザクションで処理する。
   - 同じ避難所に滞在中のユーザーは既存のチェックインを返す（冪等）。
@@ -320,6 +333,8 @@ Response: 更新後のチェックイン
 
 Request: `{ "name": "鈴木一郎" }`
 
+Response: 作成したユーザーとチェックイン（`{ "user": {...}, "checkin": {...} }`）
+
 ### `POST /admin/checkins/:checkinId/checkout`
 
 世帯の制約なしにチェックアウトする。
@@ -415,7 +430,7 @@ const CheckInRequest = z.object({
 }
 ```
 
-`details` は任意。`message` は開発者向けで、画面表示の文言はクライアントが `code` から決める。
+`details` は任意。`INVALID_REQUEST` では `details.issues` に、項目（`path`）ごとの理由（`message`）が入る。`message` は開発者向けで、画面表示の文言はクライアントが `code` から決める。
 
 | code | HTTP Status |
 | --- | --- |
@@ -428,6 +443,7 @@ const CheckInRequest = z.object({
 | `CHECKIN_NOT_FOUND` | 404 |
 | `SUPPLY_NOT_FOUND` | 404 |
 | `DISASTER_NOT_FOUND` | 404 |
+| `NOT_FOUND` | 404（存在しないパス） |
 | `ALREADY_CHECKED_IN` | 409 |
 | `NOT_CHECKED_IN` | 409 |
 | `INSUFFICIENT_SUPPLY` | 409 |
@@ -435,6 +451,7 @@ const CheckInRequest = z.object({
 | `DISASTER_ALREADY_ACTIVE` | 409 |
 | `DISASTER_ALREADY_CLOSED` | 409 |
 | `INTERNAL_ERROR` | 500 |
+| `NOT_IMPLEMENTED` | 501（仕様だけ定義し、まだ実装していないエンドポイント） |
 
 ## 認証の発展
 

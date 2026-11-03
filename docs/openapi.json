@@ -1,0 +1,2224 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "避難所DX API",
+    "version": "0.1.0",
+    "description": "避難所DX バックエンドのAPI仕様。設計の背景は docs/api.md を参照。\n\n- 利用者API: `X-User-Id` ヘッダーに、アプリが生成した利用者ID（UUID）を付ける。\n- 管理者API（/api/v1/admin/*）: `Authorization: Bearer <ADMIN_TOKEN>` を付ける。\n- エラーは `{ error: { code, message, details? } }`。画面の文言は code から決める。\n- まだ実装していないエンドポイントは 501 NOT_IMPLEMENTED を返す。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "ローカル"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "UserId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-User-Id",
+        "description": "アプリが生成した利用者ID（UUID）。現段階は自己申告"
+      },
+      "AdminToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "全運営者で共有する管理者トークン（ADMIN_TOKEN）"
+      }
+    },
+    "schemas": {
+      "ShelterItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Shelter"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "Shelter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "example": "第一小学校"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "○○市中央1-1-1"
+          },
+          "capacity": {
+            "type": "integer",
+            "example": 500
+          },
+          "currentOccupancy": {
+            "type": "integer",
+            "description": "滞在中（チェックアウトしていない）のチェックイン数",
+            "example": 132
+          },
+          "isOverCapacity": {
+            "type": "boolean",
+            "description": "currentOccupancy > capacity。満員でもチェックインは拒否しない",
+            "example": false
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true,
+            "example": 35.6812
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true,
+            "example": 139.7671
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "capacity",
+          "currentOccupancy",
+          "isOverCapacity",
+          "latitude",
+          "longitude"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "INVALID_REQUEST",
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "USER_NOT_FOUND",
+                  "SHELTER_NOT_FOUND",
+                  "BEACON_NOT_FOUND",
+                  "CHECKIN_NOT_FOUND",
+                  "SUPPLY_NOT_FOUND",
+                  "DISASTER_NOT_FOUND",
+                  "ALREADY_CHECKED_IN",
+                  "NOT_CHECKED_IN",
+                  "INSUFFICIENT_SUPPLY",
+                  "NO_ACTIVE_DISASTER",
+                  "DISASTER_ALREADY_ACTIVE",
+                  "DISASTER_ALREADY_CLOSED",
+                  "INTERNAL_ERROR",
+                  "NOT_IMPLEMENTED"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "開発者向けの説明。画面表示の文言はクライアントが code から決める"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "エラーの補足情報。内容はエラーコードごとに異なる"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "BeaconShelterResponse": {
+        "type": "object",
+        "properties": {
+          "shelter": {
+            "$ref": "#/components/schemas/ShelterSummary"
+          }
+        },
+        "required": [
+          "shelter"
+        ]
+      },
+      "ShelterSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "example": "第一小学校"
+          },
+          "capacity": {
+            "type": "integer",
+            "example": 500
+          },
+          "currentOccupancy": {
+            "type": "integer",
+            "description": "滞在中（チェックアウトしていない）のチェックイン数",
+            "example": 132
+          },
+          "isOverCapacity": {
+            "type": "boolean",
+            "description": "currentOccupancy > capacity。満員でもチェックインは拒否しない",
+            "example": false
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "capacity",
+          "currentOccupancy",
+          "isOverCapacity"
+        ]
+      },
+      "ActiveDisasterResponse": {
+        "type": "object",
+        "properties": {
+          "disaster": {
+            "$ref": "#/components/schemas/Disaster"
+          }
+        },
+        "required": [
+          "disaster"
+        ]
+      },
+      "Disaster": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "example": "2026年11月 ○○地震"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "closed"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          },
+          "endedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "startedAt",
+          "endedAt"
+        ]
+      },
+      "ShelterSupplyItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShelterSupply"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ShelterSupply": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SupplyRef"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "quantity": {
+                "type": "integer",
+                "example": 120
+              }
+            },
+            "required": [
+              "quantity"
+            ]
+          }
+        ]
+      },
+      "SupplyRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "example": "水"
+          },
+          "unit": {
+            "type": "string",
+            "example": "bottle"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "unit"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "山田太郎"
+          },
+          "householdId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "householdId"
+        ]
+      },
+      "PutUserRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "山田太郎"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "Household": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserRef"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "members"
+        ]
+      },
+      "UserRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "山田太郎"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "AddHouseholdMemberRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "山田太郎"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "MyCheckinsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "user": {
+                  "$ref": "#/components/schemas/UserRef"
+                },
+                "checkin": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+                    },
+                    "shelter": {
+                      "$ref": "#/components/schemas/ShelterRef"
+                    },
+                    "checkedInAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-11-03T13:30:00+09:00"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "shelter",
+                    "checkedInAt"
+                  ]
+                }
+              },
+              "required": [
+                "user",
+                "checkin"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ShelterRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "name": {
+            "type": "string",
+            "example": "第一小学校"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CheckinItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Checkin"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "Checkin": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "shelterId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "disasterId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "checkedInAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          },
+          "checkedOutAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "shelterId",
+          "disasterId",
+          "checkedInAt",
+          "checkedOutAt"
+        ]
+      },
+      "CheckinRequest": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "minItems": 1,
+            "description": "チェックインする利用者。自分と同じ世帯のメンバーのみ指定できる。省略時は自分（X-User-Id）のみ"
+          }
+        }
+      },
+      "AdminCheckinItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCheckin"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AdminCheckin": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "checkedInAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          },
+          "checkedOutAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "checkedInAt",
+          "checkedOutAt"
+        ]
+      },
+      "ProxyCheckinResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "checkin": {
+            "$ref": "#/components/schemas/Checkin"
+          }
+        },
+        "required": [
+          "user",
+          "checkin"
+        ]
+      },
+      "ProxyCheckinRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "山田太郎"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "SupplyOperationRequest": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "example": 20
+          },
+          "operatorName": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "管理画面で入力された運営者名（自己申告）",
+            "example": "受付担当A"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "朝の配布"
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "SupplyTransactionItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplyTransaction"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SupplyTransaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "supply": {
+            "$ref": "#/components/schemas/SupplyRef"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "IN",
+              "OUT"
+            ]
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "operatorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "disasterId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-03T13:30:00+09:00"
+          }
+        },
+        "required": [
+          "id",
+          "supply",
+          "type",
+          "quantity",
+          "operatorName",
+          "note",
+          "disasterId",
+          "createdAt"
+        ]
+      },
+      "DisasterItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Disaster"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreateDisasterRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "example": "2026年11月 ○○地震"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/v1/shelters": {
+      "get": {
+        "operationId": "listShelters",
+        "tags": [
+          "Shelter"
+        ],
+        "security": [],
+        "summary": "避難所一覧",
+        "responses": {
+          "200": {
+            "description": "避難所一覧",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelterItems"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/{shelterId}": {
+      "get": {
+        "operationId": "getShelter",
+        "tags": [
+          "Shelter"
+        ],
+        "security": [],
+        "summary": "避難所詳細",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "避難所",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shelter"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beacons/shelter": {
+      "get": {
+        "operationId": "getShelterByBeacon",
+        "tags": [
+          "Beacon"
+        ],
+        "security": [],
+        "summary": "Beaconから避難所を取得",
+        "description": "アプリが検出したiBeaconの major / minor から避難所を取得する。このAPIはチェックインを行わない。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "minimum": 0,
+              "maximum": 65535,
+              "example": 1
+            },
+            "required": false,
+            "name": "major",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "minimum": 0,
+              "maximum": 65535,
+              "example": 1
+            },
+            "required": false,
+            "name": "minor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beaconが設置された避難所",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconShelterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "BEACON_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/disasters/active": {
+      "get": {
+        "operationId": "getActiveDisaster",
+        "tags": [
+          "Disaster"
+        ],
+        "security": [],
+        "summary": "activeな災害",
+        "description": "activeな災害がない場合は `{ \"disaster\": null }` を返す。",
+        "responses": {
+          "200": {
+            "description": "activeな災害",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveDisasterResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/{shelterId}/supplies": {
+      "get": {
+        "operationId": "listShelterSupplies",
+        "tags": [
+          "Supply"
+        ],
+        "security": [],
+        "summary": "物資の在庫一覧",
+        "description": "全物資マスタを返し、在庫行がないものは quantity: 0 とする。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "在庫一覧",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelterSupplyItems"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}": {
+      "put": {
+        "operationId": "putUser",
+        "tags": [
+          "User"
+        ],
+        "security": [],
+        "summary": "利用者登録・名前更新",
+        "description": "アプリが初回起動時に生成したUUIDで利用者を登録する。冪等で、既存なら名前を更新する。新規作成時はその利用者だけの世帯を同時に作る。X-User-Id は不要。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登録・更新後の利用者",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/household": {
+      "get": {
+        "operationId": "getHousehold",
+        "tags": [
+          "User"
+        ],
+        "summary": "自分の世帯とメンバー",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "世帯",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Household"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/household/members": {
+      "post": {
+        "operationId": "addHouseholdMember",
+        "tags": [
+          "User"
+        ],
+        "summary": "端末を持たない家族を世帯に追加",
+        "description": "IDはサーバーが生成する。",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddHouseholdMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "追加した世帯メンバー",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/checkins": {
+      "get": {
+        "operationId": "getMyCheckins",
+        "tags": [
+          "CheckIn"
+        ],
+        "summary": "世帯メンバー全員の現在のチェックイン状態",
+        "description": "チェックインしていないメンバーは checkin: null。",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "世帯メンバーごとの滞在状態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyCheckinsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shelters/{shelterId}/checkins": {
+      "post": {
+        "operationId": "checkin",
+        "tags": [
+          "CheckIn"
+        ],
+        "summary": "チェックイン（世帯まとめて可）",
+        "description": "全員分を1トランザクションで処理する。\n- 同じ避難所に滞在中のユーザーは既存のチェックインを返す（冪等）。\n- 別の避難所に滞在中のユーザーが1人でもいれば、全体を取り消して ALREADY_CHECKED_IN を返す。details.conflicts に対象ユーザーと滞在先（CheckinConflict の配列）が入る。\n- チェックインはactiveな災害に自動で紐づく。",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "チェックイン（既存分を含む）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinItems"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NO_ACTIVE_DISASTER / ALREADY_CHECKED_IN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkins/{checkinId}/checkout": {
+      "post": {
+        "operationId": "checkout",
+        "tags": [
+          "CheckIn"
+        ],
+        "summary": "チェックアウト（世帯メンバー分も可）",
+        "security": [
+          {
+            "UserId": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "checkinId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "更新後のチェックイン",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkin"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CHECKIN_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NOT_CHECKED_IN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/shelters/{shelterId}/checkins": {
+      "get": {
+        "operationId": "listCheckins",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "避難者一覧",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active"
+              ],
+              "description": "active: 滞在中のみ。省略時はactiveな災害の全件"
+            },
+            "required": false,
+            "description": "active: 滞在中のみ。省略時はactiveな災害の全件",
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "避難者一覧",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCheckinItems"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "proxyCheckin",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "代理チェックイン（優先度低）",
+        "description": "スマホを持たない人を運営者が代理でチェックインする。ユーザー（と単独の世帯）を同時に作成する。",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProxyCheckinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "作成したユーザーとチェックイン",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProxyCheckinResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NO_ACTIVE_DISASTER",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/checkins/{checkinId}/checkout": {
+      "post": {
+        "operationId": "proxyCheckout",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "代理チェックアウト",
+        "description": "世帯の制約なしにチェックアウトする。",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "checkinId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "更新後のチェックイン",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkin"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CHECKIN_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NOT_CHECKED_IN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/shelters/{shelterId}/supplies/{supplyId}/in": {
+      "post": {
+        "operationId": "supplyIn",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "入庫",
+        "description": "在庫更新と履歴の記録を1トランザクションで行う。activeな災害があれば履歴に紐づける（なくても入庫できる）。",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "supplyId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplyOperationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後の在庫",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelterSupply"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND / SUPPLY_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/shelters/{shelterId}/supplies/{supplyId}/out": {
+      "post": {
+        "operationId": "supplyOut",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "配布",
+        "description": "在庫更新と履歴の記録を1トランザクションで行う。在庫より多い数量は INSUFFICIENT_SUPPLY。",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "supplyId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplyOperationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後の在庫",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelterSupply"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND / SUPPLY_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "INSUFFICIENT_SUPPLY",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/shelters/{shelterId}/supply-transactions": {
+      "get": {
+        "operationId": "listTransactions",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "物資の入出庫履歴",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "shelterId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": false,
+            "name": "disasterId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": false,
+            "name": "supplyId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "入出庫履歴（新しい順）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyTransactionItems"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SHELTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/disasters": {
+      "get": {
+        "operationId": "listDisasters",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "災害一覧（過去分を含む、新しい順）",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "災害一覧",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisasterItems"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDisaster",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "災害を開始",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDisasterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "開始した災害",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Disaster"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DISASTER_ALREADY_ACTIVE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/disasters/{disasterId}/close": {
+      "post": {
+        "operationId": "closeDisaster",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "災害を終了",
+        "description": "滞在中のチェックインをすべてチェックアウトする。",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "01a19fe0-339a-77ad-8adf-2fd52c8110fa"
+            },
+            "required": true,
+            "name": "disasterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "終了した災害",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Disaster"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "DISASTER_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DISASTER_ALREADY_CLOSED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
