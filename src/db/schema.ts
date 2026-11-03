@@ -234,10 +234,7 @@ export const userLocationPoints = pgTable(
       .defaultNow(),
   },
   (t) => [
-    index("user_location_points_user_recorded_idx").on(
-      t.userId,
-      t.recordedAt,
-    ),
+    index("user_location_points_user_recorded_idx").on(t.userId, t.recordedAt),
     check(
       "user_location_points_latitude_check",
       sql`${t.latitude} between -90 and 90`,

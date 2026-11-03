@@ -7,4 +7,6 @@ import { openApiConfig } from "../openapi.js";
 const outFile = process.argv[2] ?? "docs/openapi.json";
 const doc = app.getOpenAPIDocument(openApiConfig);
 writeFileSync(outFile, `${JSON.stringify(doc, null, 2)}\n`);
-console.log(`openapi: wrote ${outFile} (${Object.keys(doc.paths ?? {}).length} paths)`);
+console.log(
+  `openapi: wrote ${outFile} (${Object.keys(doc.paths ?? {}).length} paths)`,
+);

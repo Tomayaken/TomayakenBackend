@@ -33,7 +33,11 @@ const createDisaster = createRoute({
   request: { body: jsonBody(CreateDisasterRequest) },
   responses: {
     201: jsonContent(Disaster, "開始した災害"),
-    ...errorResponses("INVALID_REQUEST", "UNAUTHORIZED", "DISASTER_ALREADY_ACTIVE"),
+    ...errorResponses(
+      "INVALID_REQUEST",
+      "UNAUTHORIZED",
+      "DISASTER_ALREADY_ACTIVE",
+    ),
   },
 });
 

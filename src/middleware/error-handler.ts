@@ -1,6 +1,7 @@
-import type { Context, ErrorHandler, NotFoundHandler } from "hono";
-import type { Hook } from "@hono/zod-openapi";
+import type { OpenAPIHonoOptions } from "@hono/zod-openapi";
+import type { ErrorHandler, NotFoundHandler } from "hono";
 import { AppError } from "../errors/app-error.js";
+import type { AppEnv } from "../types.js";
 
 export const errorHandler: ErrorHandler = (err, c) => {
   if (err instanceof AppError) {
@@ -17,9 +18,9 @@ export const notFoundHandler: NotFoundHandler = (c) =>
   c.json(new AppError("NOT_FOUND").toBody(), 404);
 
 /** Zodの検証に失敗したら INVALID_REQUEST (400) を返す */
-export const validationHook: Hook<unknown, any, string, unknown> = (
+export const validationHook: OpenAPIHonoOptions<AppEnv>["defaultHook"] = (
   result,
-  c: Context,
+  c,
 ) => {
   if (!result.success) {
     return c.json(

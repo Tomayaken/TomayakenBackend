@@ -39,22 +39,32 @@ describe("共通のエラー形式", () => {
   });
 
   it("検証エラーは INVALID_REQUEST と項目ごとの理由を返す", async () => {
-    const res = await app.request("/api/v1/me/household/members", json({ name: "" }));
+    const res = await app.request(
+      "/api/v1/me/household/members",
+      json({ name: "" }),
+    );
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({
-      error: { code: "INVALID_REQUEST", details: { issues: [{ path: "name" }] } },
+      error: {
+        code: "INVALID_REQUEST",
+        details: { issues: [{ path: "name" }] },
+      },
     });
   });
 
   it("クエリの範囲外も INVALID_REQUEST", async () => {
-    const res = await app.request("/api/v1/beacons/shelter?major=70000&minor=1");
+    const res = await app.request(
+      "/api/v1/beacons/shelter?major=70000&minor=1",
+    );
     expect(res.status).toBe(400);
   });
 
   it("未実装のエンドポイントは NOT_IMPLEMENTED", async () => {
     const res = await app.request("/api/v1/shelters");
     expect(res.status).toBe(501);
-    expect(await res.json()).toMatchObject({ error: { code: "NOT_IMPLEMENTED" } });
+    expect(await res.json()).toMatchObject({
+      error: { code: "NOT_IMPLEMENTED" },
+    });
   });
 });
 
@@ -73,7 +83,10 @@ describe("利用者の認証（X-User-Id）", () => {
   });
 
   it("正しいヘッダーなら認証を通過する", async () => {
-    const res = await app.request(`/api/v1/shelters/${SHELTER_ID}/checkins`, json({}));
+    const res = await app.request(
+      `/api/v1/shelters/${SHELTER_ID}/checkins`,
+      json({}),
+    );
     expect(res.status).toBe(501);
   });
 });

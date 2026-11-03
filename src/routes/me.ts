@@ -3,11 +3,7 @@ import { notImplemented } from "../errors/app-error.js";
 import { userAuth } from "../middleware/user-auth.js";
 import { MyCheckinsResponse } from "../schemas/checkin.js";
 import { errorResponses, jsonBody, jsonContent } from "../schemas/common.js";
-import {
-  AddHouseholdMemberRequest,
-  Household,
-  User,
-} from "../schemas/user.js";
+import { AddHouseholdMemberRequest, Household, User } from "../schemas/user.js";
 import { createRouter, userSecurity } from "./router.js";
 
 const getHousehold = createRoute({
