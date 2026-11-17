@@ -1,5 +1,4 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../../errors/app-error.js";
 import {
   errorResponses,
   itemsOf,
@@ -8,6 +7,7 @@ import {
 } from "../../schemas/common.js";
 import { CreateDisasterRequest, Disaster } from "../../schemas/disaster.js";
 import { DisasterIdParam } from "../../schemas/params.js";
+import * as disasterService from "../../services/disaster-service.js";
 import { adminSecurity, createRouter } from "../router.js";
 
 const listDisasters = createRoute({
@@ -62,6 +62,14 @@ const closeDisaster = createRoute({
 });
 
 export const adminDisasterRoutes = createRouter()
-  .openapi(listDisasters, () => notImplemented())
-  .openapi(createDisaster, () => notImplemented())
-  .openapi(closeDisaster, () => notImplemented());
+  .openapi(listDisasters, async (c) =>
+    c.json({ items: await disasterService.listDisasters() }, 200),
+  )
+  .openapi(createDisaster, async (c) => {
+    const { name } = c.req.valid("json");
+    return c.json(await disasterService.startDisaster(name), 201);
+  })
+  .openapi(closeDisaster, async (c) => {
+    const { disasterId } = c.req.valid("param");
+    return c.json(await disasterService.closeDisaster(disasterId), 200);
+  });

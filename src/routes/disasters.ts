@@ -1,7 +1,7 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../errors/app-error.js";
 import { errorResponses, jsonContent } from "../schemas/common.js";
 import { ActiveDisasterResponse } from "../schemas/disaster.js";
+import * as disasterService from "../services/disaster-service.js";
 import { createRouter } from "./router.js";
 
 const getActiveDisaster = createRoute({
@@ -18,6 +18,8 @@ const getActiveDisaster = createRoute({
   },
 });
 
-export const disasterRoutes = createRouter().openapi(getActiveDisaster, () =>
-  notImplemented(),
+export const disasterRoutes = createRouter().openapi(
+  getActiveDisaster,
+  async (c) =>
+    c.json({ disaster: await disasterService.getActiveDisaster() }, 200),
 );

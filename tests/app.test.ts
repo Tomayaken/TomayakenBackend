@@ -74,7 +74,7 @@ describe("共通のエラー形式", () => {
   });
 
   it("未実装のエンドポイントは NOT_IMPLEMENTED", async () => {
-    const res = await app.request("/api/v1/disasters/active");
+    const res = await app.request(`/api/v1/shelters/${SHELTER_ID}/supplies`);
     expect(res.status).toBe(501);
     expect(await res.json()).toMatchObject({
       error: { code: "NOT_IMPLEMENTED" },
@@ -141,8 +141,16 @@ describe("管理者の認証（Bearer）", () => {
 
   it("正しいトークンなら認証を通過する", async () => {
     const res = await app.request("/api/v1/admin/disasters", {
-      headers: { Authorization: "Bearer test-admin-token" },
+      method: "POST",
+      headers: {
+        Authorization: "Bearer test-admin-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: " " }),
     });
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: { code: "INVALID_REQUEST" },
+    });
   });
 });
