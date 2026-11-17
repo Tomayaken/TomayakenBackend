@@ -68,10 +68,29 @@ APIドキュメント（Swagger UI）は http://localhost:3000/api/v1/docs で�
 ```sh
 npm run check:fix   # format・lint の自動修正・import の並べ替え（Biome）
 npm run typecheck   # 型チェック
-npm test            # テスト（Vitest）
+npm test            # DBを使わないテスト（Vitest）
+npm run test:db     # DBに実際につなぐテスト（先に npm run db:up）
 ```
 
 CI でも同じ検査を行う（[CI](#ci)）。エディタに Biome の拡張機能を入れると、保存時に整形できる。
+
+### テストの書き方
+
+テストは2種類に分けている（`vitest.config.ts` の projects）。
+
+| 種類 | 置き場所 | 実行 | 内容 |
+| --- | --- | --- | --- |
+| unit | `tests/`（`tests/db/` 以外） | `npm test` | `app.request()` でルートを確かめる。DBは使わない |
+| db | `tests/db/` | `npm run test:db` | Service や Repository を、DockerのPostgreSQLに実際につないで確かめる（DBはモックしない） |
+
+db のテストは次のように動く。
+
+- 開発用DB（`tomayaken`）とは別のテスト用DB（`tomayaken_test`）を使う。接続先は `TEST_DATABASE_URL` で変えられる。DB名が `_test` で終わらなければ実行しない。
+- 最初に1回、テスト用DBがなければ作り、スキーマを空にしてマイグレーションを流す。
+- テストの間は、`DATABASE_URL` がテスト用DBを指す。
+- テストごとに全テーブルを空にする。初期データが必要なテストは、テストの中で `seed(db)`（`src/db/seed.ts`）を呼ぶ。
+- 1つのDBを共有するので、テストファイルは並列に流さない。
+- DBへの接続は `tests/db/helpers.ts` の `testDb()` を使う。制約違反は `pgErrorCode()` で PostgreSQL のエラーコードを確かめられる。
 
 ### DBのスキーマを変えたら
 
@@ -115,7 +134,9 @@ cp ../../../.env .env
 | `npm run lint` | lint のみ |
 | `npm run format` | format のみ（書き換える） |
 | `npm run typecheck` | 型チェック |
-| `npm test` | テスト（Vitest） |
+| `npm test` | DBを使わないテスト（Vitest） |
+| `npm run test:db` | DBに実際につなぐテスト（テスト用DB `tomayaken_test` を使う） |
+| `npm run test:all` | 両方のテスト |
 | `npm run openapi` | OpenAPI を `docs/openapi.json` に書き出す |
 | `npm run db:up` / `db:down` | ローカルの PostgreSQL を起動 / 停止 |
 | `npm run db:generate` | `src/db/schema.ts` の変更からマイグレーションを生成 |
@@ -138,8 +159,8 @@ GitHub Actions（`.github/workflows/ci.yml`）で、PR と main への push ご�
 
 | ジョブ | 内容 |
 | --- | --- |
-| Lint / Typecheck / Test | `biome ci`、型チェック、テスト、`docs/openapi.json` が最新か、スキーマの変更にマイグレーションが揃っているか |
-| Migrate / Seed | PostgreSQL 17 のサービスコンテナに対して、マイグレーションを適用し、seed を2回流す |
+| Lint / Typecheck / Test | `biome ci`、型チェック、DBを使わないテスト、`docs/openapi.json` が最新か、スキーマの変更にマイグレーションが揃っているか |
+| Migrate / Seed / DB Test | PostgreSQL 17 のサービスコンテナに対して、マイグレーションを適用し、seed を2回流す。そのあとDBに実際につなぐテストを流す |
 
 ## 初期データ（seed）
 

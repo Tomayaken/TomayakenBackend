@@ -30,8 +30,9 @@ Flutterアプリ (実機) ─────────┘
 ## テスト
 
 - Vitest を使用する。
-- Serviceのテストは Docker の PostgreSQL に実接続して行う（DBはモックしない）。
+- Serviceのテストは Docker の PostgreSQL に実接続して行う（DBはモックしない）。開発用DBとは別のテスト用DB（`tomayaken_test`）を使い、テストごとに全テーブルを空にする。
 - Routeは Hono の `app.request()` で主要な正常系・異常系を確認する。
+- 実行方法とテストの書き方は [README](../README.md#テストの書き方) を参照。
 
 ## 本番環境
 
@@ -126,6 +127,7 @@ RDS
 | `CORS_ORIGIN` | 許可する管理画面のOrigin | Viteの開発サーバー | CloudFrontのドメイン |
 | `ADMIN_TOKEN` | 管理者APIのBearerトークン | 任意の固定値 | ランダムな長い値 |
 | `PORT` | ローカルサーバーのポート | `3000` | （不要） |
+| `TEST_DATABASE_URL` | DBを使うテストの接続先（DB名は `_test` で終わること） | 省略時は `tomayaken_test` | （不要） |
 
 - デモでは本番の秘密情報もLambdaの環境変数で渡す。発展として Secrets Manager に移す。
 - Flutterアプリはブラウザではないため、CORSの対象外。

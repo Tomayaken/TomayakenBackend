@@ -1,6 +1,7 @@
+import { resolve } from "node:path";
 import { sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { createDb } from "./client.js";
+import { createDb, type Db } from "./client.js";
 import { disasters, shelterSupplies, shelters, supplies } from "./schema.js";
 
 /**
@@ -103,64 +104,68 @@ const stockRows = [
   { shelterId: S.gymnasium, supplyId: P.toilet, quantity: 200 },
 ];
 
-async function main() {
+/** 初期データを投入する。テストからも呼べるように関数にしている */
+export async function seed(db: Db) {
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(shelters)
+      .values(shelterRows)
+      .onConflictDoUpdate({
+        target: shelters.id,
+        set: {
+          name: excluded("name"),
+          address: excluded("address"),
+          capacity: excluded("capacity"),
+          latitude: excluded("latitude"),
+          longitude: excluded("longitude"),
+        },
+      });
+    await tx
+      .insert(supplies)
+      .values([...supplyRows])
+      .onConflictDoUpdate({
+        target: supplies.id,
+        set: {
+          name: excluded("name"),
+          unit: excluded("unit"),
+          consumptionType: excluded("consumption_type"),
+          quantityPerPerson: excluded("quantity_per_person"),
+        },
+      });
+    await tx.insert(shelterSupplies).values(stockRows).onConflictDoNothing();
+
+    // activeな災害がなければデモ用に1件作る。初回は固定IDで作り、
+    // その災害が終了済みなら新しいIDで作る（終了済みの災害の履歴は残す）
+    const active = await tx
+      .select({ id: disasters.id })
+      .from(disasters)
+      .where(sql`${disasters.status} = 'active'`)
+      .limit(1);
+    if (active.length === 0) {
+      const demo = {
+        name: "デモ用災害",
+        status: "active" as const,
+        startedAt: new Date(),
+      };
+      const created = await tx
+        .insert(disasters)
+        .values({ id: SEED_IDS.disaster, ...demo })
+        .onConflictDoNothing()
+        .returning({ id: disasters.id });
+      if (created.length === 0) {
+        await tx.insert(disasters).values({ id: uuidv7(), ...demo });
+      }
+    }
+  });
+}
+
+// `npm run db:seed` で直接実行されたときだけ投入する（import されたときは何もしない）
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   const { db, pool } = createDb();
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(shelters)
-        .values(shelterRows)
-        .onConflictDoUpdate({
-          target: shelters.id,
-          set: {
-            name: excluded("name"),
-            address: excluded("address"),
-            capacity: excluded("capacity"),
-            latitude: excluded("latitude"),
-            longitude: excluded("longitude"),
-          },
-        });
-      await tx
-        .insert(supplies)
-        .values([...supplyRows])
-        .onConflictDoUpdate({
-          target: supplies.id,
-          set: {
-            name: excluded("name"),
-            unit: excluded("unit"),
-            consumptionType: excluded("consumption_type"),
-            quantityPerPerson: excluded("quantity_per_person"),
-          },
-        });
-      await tx.insert(shelterSupplies).values(stockRows).onConflictDoNothing();
-
-      // activeな災害がなければデモ用に1件作る。初回は固定IDで作り、
-      // その災害が終了済みなら新しいIDで作る（終了済みの災害の履歴は残す）
-      const active = await tx
-        .select({ id: disasters.id })
-        .from(disasters)
-        .where(sql`${disasters.status} = 'active'`)
-        .limit(1);
-      if (active.length === 0) {
-        const demo = {
-          name: "デモ用災害",
-          status: "active" as const,
-          startedAt: new Date(),
-        };
-        const created = await tx
-          .insert(disasters)
-          .values({ id: SEED_IDS.disaster, ...demo })
-          .onConflictDoNothing()
-          .returning({ id: disasters.id });
-        if (created.length === 0) {
-          await tx.insert(disasters).values({ id: uuidv7(), ...demo });
-        }
-      }
-    });
+    await seed(db);
     console.log("seed: done");
   } finally {
     await pool.end();
   }
 }
-
-await main();

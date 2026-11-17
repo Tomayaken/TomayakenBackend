@@ -49,7 +49,7 @@ jobs:
           fi
 
   db:
-    name: Migrate / Seed
+    name: Migrate / Seed / DB Test
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -75,3 +75,5 @@ jobs:
       # 2回流して、seed が何度実行しても同じ状態になることを確かめる
       - run: npm run db:seed
       - run: npm run db:seed
+      # テスト用DB（tomayaken_test）を作り、DBに実際につなぐテストを流す
+      - run: npm run test:db
