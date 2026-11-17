@@ -36,36 +36,36 @@ export const ShelterRef = Shelter.pick({ id: true, name: true }).openapi(
 export const NEARBY_DEFAULT_LIMIT = 5;
 export const NEARBY_MAX_LIMIT = 20;
 
+/**
+ * クエリの数値。z.coerce.number() だけだと空文字（`?latitude=`）が 0 になるので、
+ * 空文字は「指定なし」として扱う。
+ */
+const queryNumber = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema);
+
 export const NearbyQuery = z.object({
-  latitude: z.coerce
-    .number()
-    .min(-90)
-    .max(90)
-    .openapi({
-      param: { name: "latitude", in: "query" },
-      description: "端末の現在地の緯度",
-      example: 35.6815,
-    }),
-  longitude: z.coerce
-    .number()
-    .min(-180)
-    .max(180)
-    .openapi({
-      param: { name: "longitude", in: "query" },
-      description: "端末の現在地の経度",
-      example: 139.7665,
-    }),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(NEARBY_MAX_LIMIT)
-    .default(NEARBY_DEFAULT_LIMIT)
-    .openapi({
-      param: { name: "limit", in: "query" },
-      description: "返す避難所の最大件数",
-      example: NEARBY_DEFAULT_LIMIT,
-    }),
+  latitude: queryNumber(z.coerce.number().min(-90).max(90)).openapi({
+    param: { name: "latitude", in: "query" },
+    description: "端末の現在地の緯度",
+    example: 35.6815,
+  }),
+  longitude: queryNumber(z.coerce.number().min(-180).max(180)).openapi({
+    param: { name: "longitude", in: "query" },
+    description: "端末の現在地の経度",
+    example: 139.7665,
+  }),
+  limit: queryNumber(
+    z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(NEARBY_MAX_LIMIT)
+      .default(NEARBY_DEFAULT_LIMIT),
+  ).openapi({
+    param: { name: "limit", in: "query" },
+    description: "返す避難所の最大件数",
+    example: NEARBY_DEFAULT_LIMIT,
+  }),
 });
 
 export const NearbyShelter = ShelterSummary.extend({
