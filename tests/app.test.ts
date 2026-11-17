@@ -65,8 +65,16 @@ describe("共通のエラー形式", () => {
     });
   });
 
+  it("パスのIDがUUIDでなければ、DBに問い合わせる前に INVALID_REQUEST", async () => {
+    const res = await app.request("/api/v1/shelters/not-a-uuid");
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: { code: "INVALID_REQUEST" },
+    });
+  });
+
   it("未実装のエンドポイントは NOT_IMPLEMENTED", async () => {
-    const res = await app.request("/api/v1/shelters");
+    const res = await app.request("/api/v1/disasters/active");
     expect(res.status).toBe(501);
     expect(await res.json()).toMatchObject({
       error: { code: "NOT_IMPLEMENTED" },

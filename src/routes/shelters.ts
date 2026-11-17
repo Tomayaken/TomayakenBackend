@@ -3,6 +3,7 @@ import { notImplemented } from "../errors/app-error.js";
 import { errorResponses, itemsOf, jsonContent } from "../schemas/common.js";
 import { ShelterIdParam } from "../schemas/params.js";
 import { NearbyQuery, NearbyShelter, Shelter } from "../schemas/shelter.js";
+import * as shelterService from "../services/shelter-service.js";
 import { createRouter } from "./router.js";
 
 const listShelters = createRoute({
@@ -55,7 +56,13 @@ const getShelter = createRoute({
 });
 
 export const shelterRoutes = createRouter()
-  .openapi(listShelters, () => notImplemented())
+  .openapi(listShelters, async (c) => {
+    const items = await shelterService.listShelters();
+    return c.json({ items }, 200);
+  })
   // /shelters/{shelterId} より先に登録する（"nearby" を ID として扱わせない）
   .openapi(listNearbyShelters, () => notImplemented())
-  .openapi(getShelter, () => notImplemented());
+  .openapi(getShelter, async (c) => {
+    const { shelterId } = c.req.valid("param");
+    return c.json(await shelterService.getShelter(shelterId), 200);
+  });
