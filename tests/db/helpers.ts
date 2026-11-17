@@ -1,20 +1,17 @@
 import { sql } from "drizzle-orm";
-import { createDb, type Db } from "../../src/db/client.js";
-
-let current: ReturnType<typeof createDb> | undefined;
+import { closeDb, type Db, getDb } from "../../src/db/client.js";
 
 /**
- * テスト用DBへの接続。テストファイルの中で使い回し、ファイルの最後に閉じる
- * （tests/db/setup/each.ts）。接続先は vitest.config.ts が DATABASE_URL に入れる。
+ * テスト用DBへの接続。アプリ（Service）と同じ getDb() の接続を使い、
+ * テストファイルの最後に閉じる（tests/db/setup/each.ts）。
+ * 接続先は vitest.config.ts が DATABASE_URL に入れる。
  */
 export function testDb(): Db {
-  current ??= createDb(process.env.DATABASE_URL, 2);
-  return current.db;
+  return getDb();
 }
 
 export async function closeTestDb() {
-  await current?.pool.end();
-  current = undefined;
+  await closeDb();
 }
 
 /** public スキーマの全テーブルを空にする（マイグレーション履歴は drizzle スキーマなので残る） */
