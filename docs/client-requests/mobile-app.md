@@ -31,22 +31,21 @@
   - 現段階はactiveな災害がシステム全体で1件の前提。将来、自治体ごとに災害を分ける場合は、検出した避難所を指定して取得する形になる。災害の取得はAPIクライアントの1か所にまとめてほしい。
 - `disaster` が `null` の場合はチェックインできない（`409 NO_ACTIVE_DISASTER`）。「現在開設中の避難所はありません」等を表示する。
 
-## 5. BLEによる避難所検出
+## 5. GPSによる避難所検出
 
-フロー全体は [ble-checkin.md](../ble-checkin.md)。
+フロー全体は [gps-checkin.md](../gps-checkin.md)。
 
-- iBeacon をスキャンする（`flutter_beacon` / `dchs_flutter_beacon` 等）。
-- iOS では CoreLocation のリージョン監視を使うため、**システム共通のUUIDをアプリの定数として持つ**（値はバックエンドチームから共有する）。
-- 検出した `major` / `minor` で `GET /api/v1/beacons/shelter?major=&minor=` を呼び、避難所名を表示する。
-  - `404 BEACON_NOT_FOUND` は無視してよい（他システムのBeacon等）。
-- **Beaconを検出しただけでチェックインしないこと。** 必ず利用者がボタンを押してチェックインする。
-- 距離による絞り込み（RSSIが弱すぎるものを除外する等）はアプリ側の判断で行ってよい。サーバーには送らない。
-- 必要な権限: Bluetooth、位置情報（iOS: `NSLocationWhenInUseUsageDescription` / `NSBluetoothAlwaysUsageDescription`、Android: `BLUETOOTH_SCAN` / `ACCESS_FINE_LOCATION`）。
+- 端末のGPSで現在地を取得する（`geolocator` 等）。
+- 取得した緯度・経度で `GET /api/v1/shelters/nearby?latitude=&longitude=` を呼ぶ。近い順の避難所が `distanceMeters`（現在地からの直線距離）付きで返る。
+- サーバーは距離の上限を設けない。どこまでを「近くにある」とみなして「○○が近くにあります」と表示するかは、端末の測位精度（accuracy）も見てアプリ側で決めてよい。
+- いちばん近い避難所だけでなく候補を並べ、利用者が選べるようにする（避難所どうしが近い場合や、屋内でGPSがずれる場合に備える）。
+- **近くにいるだけでチェックインしないこと。** 必ず利用者がボタンを押してチェックインする。
+- 必要な権限: 位置情報（iOS: `NSLocationWhenInUseUsageDescription`、Android: `ACCESS_FINE_LOCATION`）。避難所の検出だけなら使用中の権限で足りる。到着予測のためのバックグラウンド取得は [arrival-forecast.md](../arrival-forecast.md) を参照。
 
-## 6. 避難所一覧からの選択（Beaconがない場合）
+## 6. 避難所一覧からの選択（現在地が取れない場合）
 
-- `GET /api/v1/shelters` で一覧を表示し、選んだ避難所でチェックインできるようにする。
-- `latitude` / `longitude` があれば地図表示や距離順の並び替えに使ってよい（NULLの避難所もある）。
+- 位置情報の権限がない、測位できないなどの場合は、`GET /api/v1/shelters` で一覧を表示し、選んだ避難所でチェックインできるようにする。
+- `latitude` / `longitude` は地図表示に使ってよい（全避難所に入っている）。
 - `isOverCapacity: true` の避難所は「定員超過」と表示する（チェックイン自体はできる）。
 
 ## 7. チェックイン

@@ -12,7 +12,6 @@ import {
 import { adminCheckinRoutes } from "./routes/admin/checkins.js";
 import { adminDisasterRoutes } from "./routes/admin/disasters.js";
 import { adminSupplyRoutes } from "./routes/admin/supplies.js";
-import { beaconRoutes } from "./routes/beacons.js";
 import { checkinRoutes } from "./routes/checkins.js";
 import { disasterRoutes } from "./routes/disasters.js";
 import { meRoutes } from "./routes/me.js";
@@ -38,7 +37,6 @@ export function createApp() {
 
   const api = createRouter()
     .route("/", shelterRoutes)
-    .route("/", beaconRoutes)
     .route("/", disasterRoutes)
     .route("/", supplyRoutes)
     .route("/", userRoutes)

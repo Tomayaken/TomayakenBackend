@@ -73,12 +73,10 @@
           },
           "latitude": {
             "type": "number",
-            "nullable": true,
             "example": 35.6812
           },
           "longitude": {
             "type": "number",
-            "nullable": true,
             "example": 139.7671
           }
         },
@@ -108,7 +106,6 @@
                   "NOT_FOUND",
                   "USER_NOT_FOUND",
                   "SHELTER_NOT_FOUND",
-                  "BEACON_NOT_FOUND",
                   "CHECKIN_NOT_FOUND",
                   "SUPPLY_NOT_FOUND",
                   "DISASTER_NOT_FOUND",
@@ -142,15 +139,48 @@
           "error"
         ]
       },
-      "BeaconShelterResponse": {
+      "NearbyShelterItems": {
         "type": "object",
         "properties": {
-          "shelter": {
-            "$ref": "#/components/schemas/ShelterSummary"
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NearbyShelter"
+            }
           }
         },
         "required": [
-          "shelter"
+          "items"
+        ]
+      },
+      "NearbyShelter": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShelterSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "type": "number",
+                "example": 35.6812
+              },
+              "longitude": {
+                "type": "number",
+                "example": 139.7671
+              },
+              "distanceMeters": {
+                "type": "integer",
+                "description": "現在地から避難所までの直線距離（m、四捨五入）",
+                "example": 72
+              }
+            },
+            "required": [
+              "latitude",
+              "longitude",
+              "distanceMeters"
+            ]
+          }
         ]
       },
       "ShelterSummary": {
@@ -755,6 +785,93 @@
         }
       }
     },
+    "/api/v1/shelters/nearby": {
+      "get": {
+        "operationId": "listNearbyShelters",
+        "tags": [
+          "Shelter"
+        ],
+        "security": [],
+        "summary": "現在地から近い避難所",
+        "description": "アプリがGPSで得た現在地から、近い順に避難所を返す。このAPIはチェックインを行わない。\n- 距離は球面上の直線距離（ハーバーサイン公式）。道のりではない。\n- 距離の上限は設けない。どこまでを「近くにある」とみなすかはアプリが決める。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number",
+              "nullable": true,
+              "minimum": -90,
+              "maximum": 90,
+              "description": "端末の現在地の緯度",
+              "example": 35.6815
+            },
+            "required": false,
+            "description": "端末の現在地の緯度",
+            "name": "latitude",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "nullable": true,
+              "minimum": -180,
+              "maximum": 180,
+              "description": "端末の現在地の経度",
+              "example": 139.7665
+            },
+            "required": false,
+            "description": "端末の現在地の経度",
+            "name": "longitude",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5,
+              "description": "返す避難所の最大件数",
+              "example": 5
+            },
+            "required": false,
+            "description": "返す避難所の最大件数",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "近い順の避難所",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearbyShelterItems"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/shelters/{shelterId}": {
       "get": {
         "operationId": "getShelter",
@@ -798,85 +915,6 @@
           },
           "404": {
             "description": "SHELTER_NOT_FOUND",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "INTERNAL_ERROR",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/beacons/shelter": {
-      "get": {
-        "operationId": "getShelterByBeacon",
-        "tags": [
-          "Beacon"
-        ],
-        "security": [],
-        "summary": "Beaconから避難所を取得",
-        "description": "アプリが検出したiBeaconの major / minor から避難所を取得する。このAPIはチェックインを行わない。",
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer",
-              "nullable": true,
-              "minimum": 0,
-              "maximum": 65535,
-              "example": 1
-            },
-            "required": false,
-            "name": "major",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "nullable": true,
-              "minimum": 0,
-              "maximum": 65535,
-              "example": 1
-            },
-            "required": false,
-            "name": "minor",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Beaconが設置された避難所",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BeaconShelterResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "INVALID_REQUEST",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "BEACON_NOT_FOUND",
             "content": {
               "application/json": {
                 "schema": {
