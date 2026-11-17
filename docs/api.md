@@ -45,8 +45,8 @@
 | Method | Path | 概要 | 利用 |
 | --- | --- | --- | --- |
 | GET | `/shelters` | 避難所一覧 | App, Admin |
+| GET | `/shelters/nearby?latitude=&longitude=` | 現在地から近い避難所 | App |
 | GET | `/shelters/:shelterId` | 避難所詳細 | App, Admin |
-| GET | `/beacons/shelter?major=&minor=` | Beaconから避難所を取得 | App |
 | GET | `/disasters/active` | activeな災害 | App, Admin |
 | GET | `/shelters/:shelterId/supplies` | 物資の在庫一覧 | App, Admin |
 | GET | `/openapi.json` | API仕様（OpenAPI 3.0） | 開発用 |
@@ -105,33 +105,44 @@
 - `currentOccupancy`: `checked_out_at IS NULL` のチェックイン数。
 - `isOverCapacity`: `currentOccupancy > capacity`。満員でもチェックインは拒否しない。
 
+### `GET /shelters/nearby?latitude=&longitude=&limit=`
+
+アプリがGPSで得た現在地から、近い順に避難所を返す。**このAPIはチェックインを行わない**。フロー全体は [gps-checkin.md](./gps-checkin.md)。
+
+| クエリ | 必須 | 説明 |
+| --- | --- | --- |
+| `latitude` | ○ | 現在地の緯度（-90〜90） |
+| `longitude` | ○ | 現在地の経度（-180〜180） |
+| `limit` | | 返す最大件数（1〜20、省略時は5） |
+
+```json
+{
+  "items": [
+    {
+      "id": "0193...",
+      "name": "○○小学校",
+      "capacity": 500,
+      "currentOccupancy": 132,
+      "isOverCapacity": false,
+      "latitude": 35.6812,
+      "longitude": 139.7671,
+      "distanceMeters": 72
+    }
+  ]
+}
+```
+
+- `distanceMeters`: 現在地から避難所までの直線距離（m、四捨五入）。ハーバーサイン公式で求め、道のりではない。
+- 距離の上限は設けない。どこまでを「近くにある」とみなすかはアプリが決める（[gps-checkin.md](./gps-checkin.md#フロー)）。
+- 避難所は数十件程度の想定なので、全件の距離を計算して並べ替える。件数が増えたら PostGIS などの空間インデックスを検討する。
+
+エラー: `INVALID_REQUEST` (400)
+
 ### `GET /shelters/:shelterId`
 
 一覧の1要素と同じ形を返す。
 
 エラー: `SHELTER_NOT_FOUND` (404)
-
----
-
-## Beacon
-
-### `GET /beacons/shelter?major=&minor=`
-
-アプリが検出したiBeaconの major / minor から避難所を取得する。**このAPIはチェックインを行わない**。フロー全体は [ble-checkin.md](./ble-checkin.md)。
-
-```json
-{
-  "shelter": {
-    "id": "0193...",
-    "name": "○○小学校",
-    "capacity": 500,
-    "currentOccupancy": 132,
-    "isOverCapacity": false
-  }
-}
-```
-
-エラー: `INVALID_REQUEST` (400), `BEACON_NOT_FOUND` (404)
 
 ---
 
@@ -439,7 +450,6 @@ const CheckInRequest = z.object({
 | `FORBIDDEN` | 403 |
 | `USER_NOT_FOUND` | 404 |
 | `SHELTER_NOT_FOUND` | 404 |
-| `BEACON_NOT_FOUND` | 404 |
 | `CHECKIN_NOT_FOUND` | 404 |
 | `SUPPLY_NOT_FOUND` | 404 |
 | `DISASTER_NOT_FOUND` | 404 |

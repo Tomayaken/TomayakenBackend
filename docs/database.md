@@ -19,7 +19,6 @@
 | users | checkins | `checkins.user_id` |
 | users | user_location_points | `user_location_points.user_id` |
 | shelters | checkins | `checkins.shelter_id` |
-| shelters | shelter_beacons | `shelter_beacons.shelter_id` |
 | shelters | shelter_supplies | `shelter_supplies.shelter_id` |
 | shelters | supply_transactions | `supply_transactions.shelter_id` |
 | supplies | shelter_supplies | `shelter_supplies.supply_id` |
@@ -55,27 +54,12 @@
 | name | text | NOT NULL | |
 | address | text | NULL可 | |
 | capacity | integer | NOT NULL, >= 0 | 収容人数 |
-| latitude | double precision | NULL可 | |
-| longitude | double precision | NULL可 | |
+| latitude | double precision | NOT NULL, -90〜90 | 現在地から近い避難所を探すのに使う |
+| longitude | double precision | NOT NULL, -180〜180 | 同上 |
 | created_at | timestamptz | NOT NULL | |
 | updated_at | timestamptz | NOT NULL | |
 
 現在人数（`currentOccupancy`）はカラムに持たず、`checkins` の滞在中レコード数から求める。
-
-## shelter_beacons
-
-BLE Beacon（iBeacon）と避難所の対応。1避難所に複数Beaconを置ける。
-
-| カラム | 型 | 制約 | 説明 |
-| --- | --- | --- | --- |
-| id | uuid | PK | |
-| shelter_id | uuid | FK → shelters.id, NOT NULL | |
-| major | integer | NOT NULL, 0〜65535 | |
-| minor | integer | NOT NULL, 0〜65535 | |
-| created_at | timestamptz | NOT NULL | |
-
-- ユニーク制約: `(major, minor)`
-- iBeaconのUUIDはシステム共通の1つとし、DBには持たない（アプリの定数）。
 
 ## households
 

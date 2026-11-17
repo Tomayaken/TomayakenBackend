@@ -2,7 +2,7 @@ import { createRoute } from "@hono/zod-openapi";
 import { notImplemented } from "../errors/app-error.js";
 import { errorResponses, itemsOf, jsonContent } from "../schemas/common.js";
 import { ShelterIdParam } from "../schemas/params.js";
-import { Shelter } from "../schemas/shelter.js";
+import { NearbyQuery, NearbyShelter, Shelter } from "../schemas/shelter.js";
 import { createRouter } from "./router.js";
 
 const listShelters = createRoute({
@@ -15,6 +15,28 @@ const listShelters = createRoute({
   responses: {
     200: jsonContent(itemsOf(Shelter).openapi("ShelterItems"), "避難所一覧"),
     ...errorResponses(),
+  },
+});
+
+const listNearbyShelters = createRoute({
+  operationId: "listNearbyShelters",
+  method: "get",
+  path: "/shelters/nearby",
+  tags: ["Shelter"],
+  security: [],
+  summary: "現在地から近い避難所",
+  description: [
+    "アプリがGPSで得た現在地から、近い順に避難所を返す。このAPIはチェックインを行わない。",
+    "- 距離は球面上の直線距離（ハーバーサイン公式）。道のりではない。",
+    "- 距離の上限は設けない。どこまでを「近くにある」とみなすかはアプリが決める。",
+  ].join("\n"),
+  request: { query: NearbyQuery },
+  responses: {
+    200: jsonContent(
+      itemsOf(NearbyShelter).openapi("NearbyShelterItems"),
+      "近い順の避難所",
+    ),
+    ...errorResponses("INVALID_REQUEST"),
   },
 });
 
@@ -34,4 +56,6 @@ const getShelter = createRoute({
 
 export const shelterRoutes = createRouter()
   .openapi(listShelters, () => notImplemented())
+  // /shelters/{shelterId} より先に登録する（"nearby" を ID として扱わせない）
+  .openapi(listNearbyShelters, () => notImplemented())
   .openapi(getShelter, () => notImplemented());

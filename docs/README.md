@@ -7,7 +7,7 @@
 | [architecture.md](./architecture.md) | 全体設計（目的・システム構成・技術スタック・レイヤー・認証方針・実装優先順位・発展構想） |
 | [database.md](./database.md) | DB設計（テーブル定義・リレーション・トランザクション） |
 | [api.md](./api.md) | API設計（エンドポイント・認証区分・リクエスト/レスポンス・エラー形式） |
-| [ble-checkin.md](./ble-checkin.md) | BLEによる避難所検出とチェックインの流れ |
+| [gps-checkin.md](./gps-checkin.md) | GPSによる避難所検出とチェックインの流れ |
 | [arrival-forecast.md](./arrival-forecast.md) | 位置情報による到着予測と物資配分（検討中。パラメータとその理由を含む） |
 | [infrastructure.md](./infrastructure.md) | 実行環境（ローカル開発・本番AWS構成・デプロイ・環境変数） |
 

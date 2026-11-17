@@ -8,7 +8,7 @@
 - 災害（開設期間）の管理
 - 利用者・世帯の登録
 - 利用者のチェックイン・チェックアウト（世帯単位での代理を含む）
-- BLE Beaconによる避難所の検出
+- GPSの現在地から近い避難所の検出
 - 避難所ごとの現在人数の管理
 - 物資の在庫管理と、入庫・配布履歴の管理
 - 運営者向け管理画面へのAPI提供
@@ -21,7 +21,7 @@
 
 ```text
  利用者アプリ (Flutter)          管理画面 (React + Vite)
-   - BLE Beacon検出                - 避難者一覧・人数
+   - GPSで近い避難所を検出         - 避難者一覧・人数
    - チェックイン                  - 物資の入庫・配布
    - 世帯メンバー登録              - 災害の開始・終了
           |                               |
@@ -37,7 +37,7 @@
 
 | クライアント | 利用者 | 主な役割 |
 | --- | --- | --- |
-| 利用者アプリ（Flutter） | 避難者 | Beacon検出、避難所の確認、チェックイン/アウト、世帯メンバー管理 |
+| 利用者アプリ（Flutter） | 避難者 | GPSでの避難所検出、避難所の確認、チェックイン/アウト、世帯メンバー管理 |
 | 管理画面（React） | 避難所運営者 | 避難者の把握、物資管理、災害の開始・終了、代理チェックイン |
 
 ## 3. 技術スタック
@@ -85,7 +85,6 @@ TomayakenBackend/
 │  │
 │  ├ routes/
 │  │  ├ shelters.ts
-│  │  ├ beacons.ts
 │  │  ├ disasters.ts
 │  │  ├ users.ts
 │  │  ├ me.ts
@@ -172,7 +171,7 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 
 | 区分 | 方式 | 対象 |
 | --- | --- | --- |
-| 公開 | なし | 避難所情報、Beacon→避難所、active災害、在庫一覧 |
+| 公開 | なし | 避難所情報（現在地から近い避難所を含む）、active災害、在庫一覧 |
 | 利用者 | `X-User-Id` ヘッダー | 自分・世帯に関する操作、チェックイン/アウト |
 | 管理者 | `Authorization: Bearer <ADMIN_TOKEN>` | `/api/v1/admin/*` |
 
@@ -186,7 +185,7 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 | --- | --- | --- |
 | 災害 | [disasters](./database.md#disasters) | [Disaster](./api.md#disaster) |
 | 避難所 | [shelters](./database.md#shelters) | [Shelter](./api.md#shelter) |
-| BLE Beacon | [shelter_beacons](./database.md#shelter_beacons) | [Beacon](./api.md#beacon) |
+| 近い避難所の検出 | [shelters](./database.md#shelters)（緯度・経度） | [Shelter](./api.md#shelter)（`GET /shelters/nearby`） |
 | 利用者・世帯 | [households](./database.md#households) / [users](./database.md#users) | [User / Household](./api.md#user--household) |
 | チェックイン | [checkins](./database.md#checkins) | [CheckIn](./api.md#checkin) |
 | 物資 | [supplies](./database.md#supplies) / [shelter_supplies](./database.md#shelter_supplies) / [supply_transactions](./database.md#supply_transactions) | [Supply](./api.md#supply) |
@@ -195,20 +194,19 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 
 | 順 | 対象 | 備考 |
 | --- | --- | --- |
-| 1 | DBスキーマ・seed | 避難所・Beacon・物資・災害はseedで投入 |
-| 2 | Shelter | 一覧・詳細・現在人数 |
+| 1 | DBスキーマ・seed | 避難所・物資・災害はseedで投入 |
+| 2 | Shelter | 一覧・詳細・現在人数・現在地から近い避難所 |
 | 3 | User / Household | 登録、世帯メンバー追加 |
 | 4 | Disaster | active取得、開始・終了 |
 | 5 | CheckIn | 世帯まとめてチェックイン、チェックアウト、自分の状態 |
-| 6 | Beacon → Shelter検索 | |
-| 7 | Supply / SupplyTransaction | 在庫一覧、入庫・配布、履歴 |
-| 8 | 管理画面からの代理チェックイン | 優先度低 |
-| 9 | マスタ管理用のAdmin CRUD | 余裕があれば |
+| 6 | Supply / SupplyTransaction | 在庫一覧、入庫・配布、履歴 |
+| 7 | 管理画面からの代理チェックイン | 優先度低 |
+| 8 | マスタ管理用のAdmin CRUD | 余裕があれば |
 
 最小のデモでは以下まで一連で動作させる。
 
 ```text
-アプリでBLE検出 → 避難所名を表示
+アプリでGPSから近い避難所を検出 → 避難所名を表示
 ↓
 世帯でまとめてチェックイン
 ↓
@@ -228,7 +226,7 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 | 本人確認 | マイナンバーカード（JPKI）による本人確認、Cognito等によるトークン認証 | `user-auth.ts` の差し替え |
 | 世帯の検証 | 住民票の世帯情報と照合し、自己申告の世帯をサーバー側で検証 | `households` に住民票の世帯情報への参照を追加 |
 | 世帯への参加 | 自分の端末を持つ家族が招待コードで既存世帯に参加 | User / Household API |
-| 在場証明 | ESP32等で定期的に変化するコードをBeaconから発信し、チェックイン時にサーバーで検証して捏造を防ぐ | Beacon API・チェックインAPI |
+| 在場証明 | 避難所で定期的に変化するコードを表示し（ESP32等のBLE発信機や画面）、チェックイン時にサーバーで検証して捏造を防ぐ | チェックインAPI |
 | 運営者認証 | Cognitoで運営者を個別に認証し、`created_by` をトークンから取得 | `admin-auth.ts` の差し替え |
 | 避難所ごとの開設管理 | 災害ごとにどの避難所を開設したかを管理（`shelter_openings`） | DB |
 | 自治体ごとの災害 | 複数の地域で同時に起きた災害を別々に開始・終了する。`municipalities` を追加し、`shelters` と `disasters` に `municipality_id` を持たせ、activeな災害を自治体ごとに1件までにする。既存の行は既定の自治体に入れる追加のマイグレーションで移行できる。運営者の認証も自治体ごとに分ける | DB・災害API・`admin-auth.ts` |

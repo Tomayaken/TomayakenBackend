@@ -1,23 +1,15 @@
 import { sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { createDb } from "./client.js";
-import {
-  disasters,
-  shelterBeacons,
-  shelterSupplies,
-  shelters,
-  supplies,
-} from "./schema.js";
+import { disasters, shelterSupplies, shelters, supplies } from "./schema.js";
 
 /**
  * 開発・デモ用の初期データ。
  *
- * IDは固定値にして、DBを作り直してもクライアント側の設定（避難所ID、Beaconの
- * major / minor）が変わらないようにしている。何度実行しても同じ状態になる。
- * マスタ（避難所・Beacon・物資）は既存の行もこのファイルの値で上書きし、
+ * IDは固定値にして、DBを作り直してもクライアント側の設定（避難所ID）が
+ * 変わらないようにしている。何度実行しても同じ状態になる。
+ * マスタ（避難所・物資）は既存の行もこのファイルの値で上書きし、
  * 在庫と災害は操作の結果を消さないよう既存の行を上書きしない。
- *
- * iBeaconのUUIDはDBに持たず、アプリの定数とする（docs/ble-checkin.md）。
  */
 
 export const SEED_IDS = {
@@ -65,34 +57,6 @@ const shelterRows = [
     capacity: 800,
     latitude: 35.6905,
     longitude: 139.7004,
-  },
-];
-
-// major = 避難所の番号、minor = 避難所内のBeacon番号
-const beaconRows = [
-  {
-    id: "01a19fe0-4a00-7000-8000-000000000101",
-    shelterId: S.elementarySchool,
-    major: 1,
-    minor: 1,
-  },
-  {
-    id: "01a19fe0-4a00-7000-8000-000000000102",
-    shelterId: S.elementarySchool,
-    major: 1,
-    minor: 2,
-  },
-  {
-    id: "01a19fe0-4a00-7000-8000-000000000201",
-    shelterId: S.communityCenter,
-    major: 2,
-    minor: 1,
-  },
-  {
-    id: "01a19fe0-4a00-7000-8000-000000000301",
-    shelterId: S.gymnasium,
-    major: 3,
-    minor: 1,
   },
 ];
 
@@ -154,17 +118,6 @@ async function main() {
             capacity: excluded("capacity"),
             latitude: excluded("latitude"),
             longitude: excluded("longitude"),
-          },
-        });
-      await tx
-        .insert(shelterBeacons)
-        .values(beaconRows)
-        .onConflictDoUpdate({
-          target: shelterBeacons.id,
-          set: {
-            shelterId: excluded("shelter_id"),
-            major: excluded("major"),
-            minor: excluded("minor"),
           },
         });
       await tx

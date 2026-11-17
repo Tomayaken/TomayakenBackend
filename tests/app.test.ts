@@ -54,9 +54,15 @@ describe("共通のエラー形式", () => {
 
   it("クエリの範囲外も INVALID_REQUEST", async () => {
     const res = await app.request(
-      "/api/v1/beacons/shelter?major=70000&minor=1",
+      "/api/v1/shelters/nearby?latitude=91&longitude=139.7",
     );
     expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: {
+        code: "INVALID_REQUEST",
+        details: { issues: [{ path: "latitude" }] },
+      },
+    });
   });
 
   it("未実装のエンドポイントは NOT_IMPLEMENTED", async () => {
@@ -65,6 +71,27 @@ describe("共通のエラー形式", () => {
     expect(await res.json()).toMatchObject({
       error: { code: "NOT_IMPLEMENTED" },
     });
+  });
+});
+
+describe("近くの避難所（GET /shelters/nearby）", () => {
+  it("/shelters/{shelterId} ではなく nearby のルートに届く", async () => {
+    const res = await app.request(
+      "/api/v1/shelters/nearby?latitude=35.68&longitude=139.76",
+    );
+    expect(res.status).toBe(501);
+  });
+
+  it("現在地がなければ INVALID_REQUEST", async () => {
+    const res = await app.request("/api/v1/shelters/nearby");
+    expect(res.status).toBe(400);
+  });
+
+  it("limit が上限を超えれば INVALID_REQUEST", async () => {
+    const res = await app.request(
+      "/api/v1/shelters/nearby?latitude=35.68&longitude=139.76&limit=21",
+    );
+    expect(res.status).toBe(400);
   });
 });
 

@@ -59,30 +59,16 @@ export const shelters = pgTable(
     name: text("name").notNull(),
     address: text("address"),
     capacity: integer("capacity").notNull(),
-    latitude: doublePrecision("latitude"),
-    longitude: doublePrecision("longitude"),
+    // 利用者アプリはGPSの現在地から近い避難所を探すので、座標は必須
+    latitude: doublePrecision("latitude").notNull(),
+    longitude: doublePrecision("longitude").notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [check("shelters_capacity_check", sql`${t.capacity} >= 0`)],
-);
-
-export const shelterBeacons = pgTable(
-  "shelter_beacons",
-  {
-    id: id(),
-    shelterId: uuid("shelter_id")
-      .notNull()
-      .references(() => shelters.id),
-    major: integer("major").notNull(),
-    minor: integer("minor").notNull(),
-    createdAt: createdAt(),
-  },
   (t) => [
-    uniqueIndex("shelter_beacons_major_minor_idx").on(t.major, t.minor),
-    index("shelter_beacons_shelter_id_idx").on(t.shelterId),
-    check("shelter_beacons_major_check", sql`${t.major} between 0 and 65535`),
-    check("shelter_beacons_minor_check", sql`${t.minor} between 0 and 65535`),
+    check("shelters_capacity_check", sql`${t.capacity} >= 0`),
+    check("shelters_latitude_check", sql`${t.latitude} between -90 and 90`),
+    check("shelters_longitude_check", sql`${t.longitude} between -180 and 180`),
   ],
 );
 
