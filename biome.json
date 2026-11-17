@@ -10,6 +10,7 @@
       "**",
       "!src/db/migrations",
       "!docs/openapi.json",
+      "!explainers",
       "!**/*.md",
       "!package-lock.json"
     ]
