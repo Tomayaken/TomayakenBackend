@@ -123,6 +123,9 @@ TomayakenBackend/
 │  │
 │  ├ schemas/               # Zodスキーマ（OpenAPIの元）
 │  │
+│  ├ lib/                   # HTTPにもDBにも依存しない計算（距離の計算など）
+│  │  └ geo.ts
+│  │
 │  └ errors/
 │     └ app-error.ts
 │
