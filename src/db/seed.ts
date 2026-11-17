@@ -189,7 +189,11 @@ async function main() {
         .where(sql`${disasters.status} = 'active'`)
         .limit(1);
       if (active.length === 0) {
-        const demo = { name: "デモ用災害", status: "active" as const, startedAt: new Date() };
+        const demo = {
+          name: "デモ用災害",
+          status: "active" as const,
+          startedAt: new Date(),
+        };
         const created = await tx
           .insert(disasters)
           .values({ id: SEED_IDS.disaster, ...demo })
