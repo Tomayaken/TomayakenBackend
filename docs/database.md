@@ -79,11 +79,13 @@
 | id | uuid | PK | アプリ利用者はアプリが生成したUUID。世帯メンバー・代理登録はサーバーが生成 |
 | household_id | uuid | FK → households.id, NOT NULL | |
 | name | text | NOT NULL | |
+| has_device | boolean | NOT NULL, 既定 false | アプリから自分で登録した利用者（端末を持つ本人）なら true |
 | created_at | timestamptz | NOT NULL | |
 | updated_at | timestamptz | NOT NULL | |
 
 - アプリ利用者が初めて登録されたとき、その人だけの世帯を同時に作る。
-- 端末を持たない家族は同じ `household_id` のユーザーとして追加する。
+- 端末を持たない家族は同じ `household_id` のユーザーとして追加する（`has_device = false`）。
+- `X-User-Id` として使えるのは `has_device = true` の利用者だけ。家族のIDは世帯の画面や管理画面に表示されるので、家族のIDでは認証を通さず、`PUT /users/:userId` での登録・改名もさせない。
 - 同じ世帯のメンバーは互いにチェックイン・チェックアウトできる（上下関係はない）。
 - 将来追加しうる項目: `age_group`, `special_notes`, `emergency_contact`
 

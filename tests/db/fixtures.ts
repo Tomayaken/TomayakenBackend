@@ -24,7 +24,7 @@ export async function createDisaster(
   return row;
 }
 
-/** 世帯と、その世帯の利用者を作る */
+/** 世帯と、その世帯の利用者（既定はアプリから登録した、端末を持つ本人）を作る */
 export async function createUser(
   db: Db,
   values: Partial<typeof users.$inferInsert> = {},
@@ -35,7 +35,7 @@ export async function createUser(
   if (!householdId) throw new Error("failed to create household");
   const [row] = await db
     .insert(users)
-    .values({ name: "テスト利用者", ...values, householdId })
+    .values({ name: "テスト利用者", hasDevice: true, ...values, householdId })
     .returning();
   if (!row) throw new Error("failed to create user");
   return row;

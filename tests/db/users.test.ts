@@ -56,6 +56,21 @@ describe("userService.putUser", () => {
     expect(await countRows()).toEqual({ households: 1, users: 1 });
   });
 
+  it("端末を持たない家族のIDは FORBIDDEN で、名前も世帯も変えない", async () => {
+    const me = await userService.putUser(USER_ID, "山田太郎");
+    const member = await userService.addHouseholdMember(me, "山田花子");
+
+    await expect(userService.putUser(member.id, "偽名")).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+
+    expect((await userService.getHousehold(me)).members).toEqual([
+      { id: USER_ID, name: "山田太郎" },
+      { id: member.id, name: "山田花子" },
+    ]);
+    expect(await countRows()).toEqual({ households: 1, users: 2 });
+  });
+
   it("同じIDで同時に登録しても、利用者と世帯は1つずつ", async () => {
     const results = await Promise.all(
       Array.from({ length: 5 }, (_, i) =>
@@ -94,7 +109,20 @@ describe("PUT /api/v1/users/:userId", () => {
   it("X-User-Id なしで登録でき、登録後の利用者を返す", async () => {
     const res = await putUser(USER_ID, "  山田太郎  ");
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ id: USER_ID, name: "山田太郎" });
+    // 内部の項目（hasDevice）は返さない
+    expect(Object.keys((await res.json()) as object).sort()).toEqual([
+      "householdId",
+      "id",
+      "name",
+    ]);
+  });
+
+  it("端末を持たない家族のIDなら 403 FORBIDDEN", async () => {
+    const me = await userService.putUser(USER_ID, "山田太郎");
+    const member = await userService.addHouseholdMember(me, "山田花子");
+    const res = await putUser(member.id, "偽名");
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: { code: "FORBIDDEN" } });
   });
 });
 
@@ -141,6 +169,13 @@ describe("利用者の認証（X-User-Id）", () => {
     );
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ error: { code: "UNAUTHORIZED" } });
+  });
+
+  it("端末を持たない家族のIDなら UNAUTHORIZED", async () => {
+    const me = await userService.putUser(USER_ID, "山田太郎");
+    const member = await userService.addHouseholdMember(me, "山田花子");
+    const res = await app.request("/api/v1/me/household", asUser(member.id));
+    expect(res.status).toBe(401);
   });
 
   it("登録済みのIDなら認証を通過する", async () => {

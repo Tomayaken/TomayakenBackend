@@ -13,11 +13,11 @@ const putUser = createRoute({
   security: [],
   summary: "利用者登録・名前更新",
   description:
-    "アプリが初回起動時に生成したUUIDで利用者を登録する。冪等で、既存なら名前を更新する。新規作成時はその利用者だけの世帯を同時に作る。X-User-Id は不要。",
+    "アプリが初回起動時に生成したUUIDで利用者を登録する。冪等で、既存なら名前を更新する。新規作成時はその利用者だけの世帯を同時に作る。X-User-Id は不要。端末を持たない家族（POST /me/household/members で追加した人）のIDは 403 FORBIDDEN。",
   request: { params: UserIdParam, body: jsonBody(PutUserRequest) },
   responses: {
     200: jsonContent(User, "登録・更新後の利用者"),
-    ...errorResponses("INVALID_REQUEST"),
+    ...errorResponses("INVALID_REQUEST", "FORBIDDEN"),
   },
 });
 
