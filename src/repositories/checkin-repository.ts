@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, type SQL } from "drizzle-orm";
 import type { Executor } from "../db/client.js";
-import { checkins, disasters, users } from "../db/schema.js";
+import { checkins, disasters, shelters, users } from "../db/schema.js";
 
 const checkinFields = {
   id: checkins.id,
@@ -63,6 +63,36 @@ export async function findByShelterInActiveDisaster(
     )
     .where(and(...conditions))
     .orderBy(asc(checkins.checkedInAt), asc(checkins.id));
+}
+
+export function findActiveByUsers(
+  db: Executor,
+  userIds: string[],
+  lock?: "update",
+) {
+  const query = db
+    .select({ ...checkinFields, shelterName: shelters.name })
+    .from(checkins)
+    .innerJoin(shelters, eq(shelters.id, checkins.shelterId))
+    .where(
+      and(inArray(checkins.userId, userIds), isNull(checkins.checkedOutAt)),
+    );
+  return lock ? query.for(lock, { of: checkins }) : query;
+}
+
+export async function insertIfAbsent(
+  db: Executor,
+  values: Pick<CheckinRow, "userId" | "shelterId" | "disasterId">,
+) {
+  const [row] = await db
+    .insert(checkins)
+    .values({ ...values, checkedInAt: new Date() })
+    .onConflictDoNothing({
+      target: checkins.userId,
+      where: isNull(checkins.checkedOutAt),
+    })
+    .returning(checkinFields);
+  return row;
 }
 
 export async function findById(

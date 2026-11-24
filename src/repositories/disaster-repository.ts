@@ -12,12 +12,13 @@ const disasterFields = {
 
 export type DisasterRow = Omit<typeof disasters.$inferSelect, "createdAt">;
 
-export async function findActive(db: Executor) {
-  const [row] = await db
+export async function findActive(db: Executor, lock?: "share") {
+  const query = db
     .select(disasterFields)
     .from(disasters)
     .where(eq(disasters.status, "active"))
     .limit(1);
+  const [row] = await (lock ? query.for(lock) : query);
   return row;
 }
 
