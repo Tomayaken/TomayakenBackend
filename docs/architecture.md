@@ -130,7 +130,8 @@ TomayakenBackend/
 │     └ app-error.ts
 │
 ├ infra/                    # AWS CDK
-├ compose.yaml              # ローカルPostgreSQL
+├ compose.yaml              # ローカルのPostgreSQL・マイグレーション・APIサーバー
+├ Dockerfile                # ローカル開発用イメージ（compose.yaml から使う）
 ├ drizzle.config.ts
 ├ package.json
 └ tsconfig.json

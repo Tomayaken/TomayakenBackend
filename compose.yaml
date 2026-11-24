@@ -18,5 +18,43 @@ services:
       timeout: 3s
       retries: 15
 
+  # マイグレーションと seed を流して終了する。api はこれが成功してから起動する
+  migrate:
+    build: .
+    command: ["sh", "-c", "npm run db:migrate && npm run db:seed"]
+    environment:
+      DATABASE_URL: postgresql://tomayaken:tomayaken@db:5432/tomayaken
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    command: ["npm", "run", "dev"]
+    # ADMIN_TOKEN・CORS_ORIGIN などは .env から読む。接続先とポートはコンテナ用に上書きする
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://tomayaken:tomayaken@db:5432/tomayaken
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    # src をマウントし、ホストでの変更を tsx watch で反映する
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api/v1/docs').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
 volumes:
   db-data:
