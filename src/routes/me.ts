@@ -4,6 +4,7 @@ import { userAuth } from "../middleware/user-auth.js";
 import { MyCheckinsResponse } from "../schemas/checkin.js";
 import { errorResponses, jsonBody, jsonContent } from "../schemas/common.js";
 import { AddHouseholdMemberRequest, Household, User } from "../schemas/user.js";
+import * as userService from "../services/user-service.js";
 import { createRouter, userSecurity } from "./router.js";
 
 const getHousehold = createRoute({
@@ -52,6 +53,14 @@ const getMyCheckins = createRoute({
 });
 
 export const meRoutes = createRouter()
-  .openapi(getHousehold, () => notImplemented())
-  .openapi(addHouseholdMember, () => notImplemented())
+  .openapi(getHousehold, async (c) => {
+    return c.json(await userService.getHousehold(c.var.userId), 200);
+  })
+  .openapi(addHouseholdMember, async (c) => {
+    const { name } = c.req.valid("json");
+    return c.json(
+      await userService.addHouseholdMember(c.var.userId, name),
+      201,
+    );
+  })
   .openapi(getMyCheckins, () => notImplemented());
