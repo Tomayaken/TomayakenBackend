@@ -1,6 +1,9 @@
 .yomiyasu/
 node_modules/
 dist/
+cdk.out/
+# デプロイ先のアカウントIDを含み、人によって違うのでコミットしない
+cdk.context.json
 .env
 .claude/worktrees/
 personas/

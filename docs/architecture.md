@@ -51,7 +51,7 @@
 | DB | PostgreSQL |
 | ORM・マイグレーション | Drizzle ORM / drizzle-kit |
 | テスト | Vitest |
-| 本番実行環境 | API Gateway / Lambda / RDS for PostgreSQL |
+| 本番実行環境 | API Gateway / Lambda / Aurora Serverless v2（PostgreSQL） |
 | IaC | AWS CDK（TypeScript） |
 | 開発実行環境 | Hono Node.js Server / PostgreSQL on Docker |
 
@@ -238,7 +238,7 @@ PostgreSQLとの通信を担当する。Drizzleのクエリはここへ閉じ込
 
 ## 11. 設計上のポイント
 
-このバックエンドではAWS自体をアプリケーションの中心には置かない。Hono + PostgreSQL を中心とし、Lambda / API Gateway / RDS は本番実行環境として扱う。この構成には次の利点がある。
+このバックエンドではAWS自体をアプリケーションの中心には置かない。Hono + PostgreSQL を中心とし、Lambda / API Gateway / Aurora は本番実行環境として扱う。この構成には次の利点がある。
 
 - 普段の開発にAWS料金が発生しない
 - ローカル開発が高速
