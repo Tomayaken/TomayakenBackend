@@ -2,18 +2,28 @@
 
 避難所DX のバックエンド。設計書は [docs/](./docs/README.md) を参照。
 
-## 必要なもの
+## 起動のしかた
 
-| ツール | 用途 |
-| --- | --- |
-| [mise](https://mise.jdx.dev/) | Node.js のバージョン管理。`mise.toml` で Node.js 24 に固定している（本番の Lambda と同じ） |
-| Docker（Docker Compose v2） | ローカルの PostgreSQL |
+ローカルでの起動のしかたは2通りある。目的に合わせてどちらかを選ぶ。
 
-mise を使わない場合は、Node.js 24 を別の方法で入れてもよい。
+| | [Docker だけで起動する](#docker-だけで起動する) | [ホストで開発する](#ホストで開発する) |
+| --- | --- | --- |
+| 向いている場面 | API を動かして試すだけ（管理画面やアプリを開発するときなど） | バックエンドのコードを変える。テストや lint を流す |
+| 必要なもの | Docker（Docker Compose v2） | Docker（Docker Compose v2）と Node.js 24 |
+| Docker で動かすもの | DB・マイグレーション・APIサーバーのすべて | DB だけ |
+| APIサーバーの起動 | `docker compose up --build` | `npm run dev`（ホストで動かす） |
+| マイグレーションと seed | 起動時に自動で流れる | `npm run db:migrate` と `npm run db:seed` を自分で流す |
+
+どちらの方法でも、同じ DB コンテナとボリュームを使う。そのため、方法を切り替えても DB のデータは残る。
+
+ただし、2つの方法を同時には使えない。どちらも APIサーバーをポート 3000 で起動するためである。切り替えるときは、次のように片方を止めてから起動する。
+
+- 「Docker だけ」から「ホスト」へ: `docker compose down` で全コンテナを止めてから、`npm run db:up` で DB だけを起動する。
+- 「ホスト」から「Docker だけ」へ: ホストの `npm run dev` を止めてから、`docker compose up --build` を実行する。
 
 ## Docker だけで起動する
 
-API を動かして試すだけなら、Node.js を入れなくても Docker だけで起動できる。
+Node.js を入れなくても、Docker だけで DB・マイグレーション・APIサーバーをまとめて起動できる。
 
 ```sh
 cp .env.example .env
@@ -26,19 +36,25 @@ docker compose up --build
 | --- | --- |
 | `db` | PostgreSQL 17（:5432） |
 | `migrate` | マイグレーションと seed を流して終了する |
-| `api` | APIサーバー（http://localhost:3000）。`migrate` が成功してから起動する |
+| `api` | APIサーバー（<http://localhost:3000）。`migrate`> が成功してから起動する |
 
 - `api` は `src/` をマウントしているので、ホストでファイルを変えると再起動する。
 - `api` は `.env` から `ADMIN_TOKEN` や `CORS_ORIGIN` を読む。`.env` がなくても起動はするが、管理者APIは使えない。`DATABASE_URL` と `PORT` はコンテナ用の値で上書きされる。
 - `package.json` を変えたら、`docker compose up --build` でイメージを作り直す。
 - バックグラウンドで起動するなら `docker compose up -d --build --wait`。停止は `docker compose down`（データは残る）。
-- ホストで `npm run dev` を動かしているとポート 3000 がぶつかる。どちらか片方だけを使う。
+- DB のデータごと消して作り直すときは、`docker compose down -v` のあとに `docker compose up --build` を実行する。
 
-テストや lint はホストで実行するので、コードを変えるときは下のセットアップも行う。
+APIドキュメント（Swagger UI）は <http://localhost:3000/api/v1/docs> で見られる。
 
-## セットアップ
+テストや lint は Docker では流せない。コードを変えるときは、[ホストで開発する](#ホストで開発する)の手順で準備する。
+
+## ホストで開発する
+
+DB だけを Docker で動かし、APIサーバー・テスト・lint はホストの Node.js で動かす。
 
 ### 1. Node.js
+
+`mise.toml` で Node.js 24 に固定している（本番の Lambda と同じバージョン）。[mise](https://mise.jdx.dev/) で入れる。
 
 ```sh
 mise trust     # 初回のみ。このリポジトリの mise.toml を信頼する
@@ -46,7 +62,7 @@ mise install   # mise.toml の Node.js 24 を入れる
 node -v        # v24.x になっていることを確認
 ```
 
-シェルで mise を有効にしていれば（`mise activate`）、このディレクトリに入ると自動で Node.js 24 に切り替わる。
+シェルで mise を有効にしていれば（`mise activate`）、このディレクトリに入ると自動で Node.js 24 に切り替わる。mise を使わない場合は、Node.js 24 を別の方法で入れてもよい。
 
 ### 2. 依存関係と環境変数
 
@@ -64,16 +80,18 @@ cp .env.example .env
 | `ADMIN_TOKEN` | 管理者APIの Bearer トークン |
 | `CORS_ORIGIN` | 許可する管理画面の Origin（カンマ区切り）。未設定なら全 Origin を許可 |
 
-### 3. データベース（Docker）
+### 3. データベース
+
+DB だけを Docker で起動し、ホストからマイグレーションと seed を流す。
 
 ```sh
-npm run db:up        # PostgreSQL 17 を起動（healthy になるまで待つ）
+npm run db:up        # PostgreSQL 17 のコンテナだけを起動（healthy になるまで待つ）
 npm run db:migrate   # マイグレーションを適用
 npm run db:seed      # 初期データを投入
 ```
 
 - コンテナ名は `tomayakenbackend-db-1`、データは Docker ボリューム `tomayakenbackend_db-data` に保存される。
-- 停止は `npm run db:down`（データは残る）。データごと消すときは `docker compose down -v`。
+- 停止は `npm run db:down`（データは残る）。中身は `docker compose down` なので、Docker だけで起動したコンテナも止まる。データごと消すときは `docker compose down -v`。
 - DBの中身をやり直したいときは `npm run db:reset`（テーブルを消して、マイグレーションと seed を流し直す）。
 - ポート 5432 をほかの PostgreSQL が使っていると起動に失敗する。先にそちらを止める。
 - psql で中を見る: `docker compose exec db psql -U tomayaken -d tomayaken`
@@ -84,7 +102,7 @@ npm run db:seed      # 初期データを投入
 npm run dev   # http://localhost:3000 で起動し、ファイルの変更で再起動する
 ```
 
-APIドキュメント（Swagger UI）は http://localhost:3000/api/v1/docs で見られる。
+APIドキュメント（Swagger UI）は <http://localhost:3000/api/v1/docs> で見られる。
 
 ## 開発の流れ
 
