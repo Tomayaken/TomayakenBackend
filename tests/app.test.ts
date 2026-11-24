@@ -74,7 +74,19 @@ describe("共通のエラー形式", () => {
   });
 
   it("未実装のエンドポイントは NOT_IMPLEMENTED", async () => {
-    const res = await app.request("/api/v1/disasters/active");
+    // 代理チェックイン（#19、優先度低）は最後まで未実装で残る見込みなので例に使う。
+    // DBを使わずに 501 まで届く（管理者認証と入力の検証だけを通る）
+    const res = await app.request(
+      `/api/v1/admin/shelters/${SHELTER_ID}/checkins`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-admin-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "山田花子" }),
+      },
+    );
     expect(res.status).toBe(501);
     expect(await res.json()).toMatchObject({
       error: { code: "NOT_IMPLEMENTED" },
