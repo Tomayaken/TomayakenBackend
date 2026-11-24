@@ -1,9 +1,9 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../errors/app-error.js";
 import { userAuth } from "../middleware/user-auth.js";
 import { Checkin, CheckinItems, CheckinRequest } from "../schemas/checkin.js";
 import { errorResponses, jsonBody, jsonContent } from "../schemas/common.js";
 import { CheckinIdParam, ShelterIdParam } from "../schemas/params.js";
+import * as checkinService from "../services/checkin-service.js";
 import { createRouter, userSecurity } from "./router.js";
 
 const checkin = createRoute({
@@ -56,5 +56,15 @@ const checkout = createRoute({
 });
 
 export const checkinRoutes = createRouter()
-  .openapi(checkin, () => notImplemented())
-  .openapi(checkout, () => notImplemented());
+  .openapi(checkin, async (c) => {
+    const { shelterId } = c.req.valid("param");
+    const { userIds } = c.req.valid("json");
+    return c.json(
+      await checkinService.checkIn(c.var.user, shelterId, userIds),
+      201,
+    );
+  })
+  .openapi(checkout, async (c) => {
+    const { checkinId } = c.req.valid("param");
+    return c.json(await checkinService.checkOut(c.var.user, checkinId), 200);
+  });

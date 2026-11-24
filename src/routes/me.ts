@@ -1,9 +1,9 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../errors/app-error.js";
 import { userAuth } from "../middleware/user-auth.js";
 import { MyCheckinsResponse } from "../schemas/checkin.js";
 import { errorResponses, jsonBody, jsonContent } from "../schemas/common.js";
 import { AddHouseholdMemberRequest, Household, User } from "../schemas/user.js";
+import * as checkinService from "../services/checkin-service.js";
 import * as userService from "../services/user-service.js";
 import { createRouter, userSecurity } from "./router.js";
 
@@ -60,4 +60,6 @@ export const meRoutes = createRouter()
     const { name } = c.req.valid("json");
     return c.json(await userService.addHouseholdMember(c.var.user, name), 201);
   })
-  .openapi(getMyCheckins, () => notImplemented());
+  .openapi(getMyCheckins, async (c) => {
+    return c.json(await checkinService.getMyCheckins(c.var.user), 200);
+  });
