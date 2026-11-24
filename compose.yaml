@@ -12,11 +12,14 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+    # 起動直後の 30 秒間は 2 秒ごとに確認して早く healthy にし、その後は 30 秒ごとにする
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tomayaken -d tomayaken"]
-      interval: 2s
+      interval: 30s
       timeout: 3s
-      retries: 15
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
 
   # マイグレーションと seed を流して終了する。api はこれが成功してから起動する
   migrate:
@@ -46,15 +49,18 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    # 起動直後の 60 秒間は 2 秒ごとに確認して早く healthy にし、その後は 30 秒ごとにする
     healthcheck:
       test:
         - CMD
         - node
         - -e
         - "fetch('http://localhost:3000/api/v1/docs').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-      interval: 2s
+      interval: 30s
       timeout: 3s
-      retries: 30
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
 
 volumes:
   db-data:
