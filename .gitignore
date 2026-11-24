@@ -1,6 +1,7 @@
 .yomiyasu/
 node_modules/
 dist/
+cdk.out/
 .env
 .claude/worktrees/
 personas/

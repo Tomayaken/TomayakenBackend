@@ -48,6 +48,24 @@ jobs:
             exit 1
           fi
 
+  infra:
+    name: CDK Typecheck / Synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      # Lambda のバンドルにアプリ本体の依存を使う
+      - run: npm ci
+      - run: npm ci
+        working-directory: infra
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: infra
+      # AWS の認証情報なしで、テンプレートの生成と Lambda のバンドルまでを確かめる
+      - name: Synth
+        run: npx cdk synth --quiet
+        working-directory: infra
+
   db:
     name: Migrate / Seed / DB Test
     runs-on: ubuntu-latest
