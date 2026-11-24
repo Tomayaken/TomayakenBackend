@@ -3,7 +3,10 @@ import { AppError } from "../errors/app-error.js";
 import * as checkinRepository from "../repositories/checkin-repository.js";
 import * as shelterRepository from "../repositories/shelter-repository.js";
 
-function toCheckin(row: checkinRepository.CheckinRow) {
+/** 日時を API の形式（ISO 文字列）にする。チェックインを返す関数はすべてこれを通す */
+function toCheckin<T extends { checkedInAt: Date; checkedOutAt: Date | null }>(
+  row: T,
+) {
   return {
     ...row,
     checkedInAt: row.checkedInAt.toISOString(),
@@ -20,7 +23,7 @@ export async function listShelterCheckins(
   { activeOnly }: { activeOnly: boolean },
 ) {
   const db = getDb();
-  if (!(await shelterRepository.findById(db, shelterId))) {
+  if (!(await shelterRepository.existsById(db, shelterId))) {
     throw new AppError("SHELTER_NOT_FOUND");
   }
   const rows = await checkinRepository.findByShelterInActiveDisaster(
@@ -28,11 +31,7 @@ export async function listShelterCheckins(
     shelterId,
     { activeOnly },
   );
-  return rows.map((row) => ({
-    ...row,
-    checkedInAt: row.checkedInAt.toISOString(),
-    checkedOutAt: row.checkedOutAt?.toISOString() ?? null,
-  }));
+  return rows.map(toCheckin);
 }
 
 /** 管理画面からの代理チェックアウト。世帯の制約はない */

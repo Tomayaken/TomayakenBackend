@@ -45,6 +45,15 @@ export async function findAll(db: Executor): Promise<ShelterRow[]> {
   );
 }
 
+/** 避難所があるかだけを調べる（現在人数の集計をしない） */
+export async function existsById(db: Executor, id: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: shelters.id })
+    .from(shelters)
+    .where(eq(shelters.id, id));
+  return rows.length > 0;
+}
+
 export async function findById(
   db: Executor,
   id: string,
