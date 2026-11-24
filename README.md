@@ -11,6 +11,31 @@
 
 mise を使わない場合は、Node.js 24 を別の方法で入れてもよい。
 
+## Docker だけで起動する
+
+API を動かして試すだけなら、Node.js を入れなくても Docker だけで起動できる。
+
+```sh
+cp .env.example .env
+docker compose up --build
+```
+
+次の 3 つのサービスが順に立ち上がる。
+
+| サービス | 内容 |
+| --- | --- |
+| `db` | PostgreSQL 17（:5432） |
+| `migrate` | マイグレーションと seed を流して終了する |
+| `api` | APIサーバー（http://localhost:3000）。`migrate` が成功してから起動する |
+
+- `api` は `src/` をマウントしているので、ホストでファイルを変えると再起動する。
+- `api` は `.env` から `ADMIN_TOKEN` や `CORS_ORIGIN` を読む。`.env` がなくても起動はするが、管理者APIは使えない。`DATABASE_URL` と `PORT` はコンテナ用の値で上書きされる。
+- `package.json` を変えたら、`docker compose up --build` でイメージを作り直す。
+- バックグラウンドで起動するなら `docker compose up -d --build --wait`。停止は `docker compose down`（データは残る）。
+- ホストで `npm run dev` を動かしているとポート 3000 がぶつかる。どちらか片方だけを使う。
+
+テストや lint はホストで実行するので、コードを変えるときは下のセットアップも行う。
+
 ## セットアップ
 
 ### 1. Node.js

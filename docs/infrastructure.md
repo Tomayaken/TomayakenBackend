@@ -23,7 +23,7 @@ Flutterアプリ (実機) ─────────┘
 ```
 
 - API Gateway / Lambda / RDS / CloudFront / S3 はローカル再現しない。エミュレーターも使用しない。
-- PostgreSQLは `compose.yaml` で起動する。
+- PostgreSQLは `compose.yaml` で起動する。`docker compose up` で、PostgreSQL・マイグレーションと seed・APIサーバーをまとめて起動することもできる（[README](../README.md#docker-だけで起動する)）。
 - 初期データは `src/db/seed.ts` で投入する（避難所・物資・activeな災害）。
 - 実機のFlutterアプリから接続する場合は、同一LAN上の開発PCのIPを指定する。
 
