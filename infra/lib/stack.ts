@@ -33,15 +33,15 @@ export type TomayakenStackProps = StackProps & {
 
 /**
  * デモ用の本番環境（docs/infrastructure.md「IaC（AWS CDK）」）。
- * 使わない間は cdk destroy で消し、デモの前に cdk deploy で作り直す前提なので、
- * RDS・S3 は削除時にデータごと消える設定にしている。
+ * スタックは残しておき、使わない間は Aurora Serverless v2 が自動で休む（URL は変わらない）。
+ * 要らなくなったら cdk destroy で消す。DB・S3 は削除時にデータごと消える設定にしている。
  */
 export class TomayakenStack extends Stack {
   constructor(scope: Construct, id: string, props: TomayakenStackProps = {}) {
     super(scope, id, props);
 
     // --- ネットワーク: Private Isolated サブネットだけ（NAT Gateway なし） ---
-    // RDS のサブネットグループに 2 AZ 必要なので maxAzs は 2
+    // Aurora のサブネットグループに 2 AZ 必要なので maxAzs は 2
     const vpc = new ec2.Vpc(this, "Vpc", {
       maxAzs: 2,
       natGateways: 0,
@@ -55,7 +55,7 @@ export class TomayakenStack extends Stack {
     });
     const isolated = { subnetType: ec2.SubnetType.PRIVATE_ISOLATED };
 
-    // Lambda の通信先は RDS だけ（外へは出られない）
+    // Lambda の通信先は Aurora だけ（外へは出られない）
     const lambdaSg = new ec2.SecurityGroup(this, "LambdaSecurityGroup", {
       vpc,
       description: "Tomayaken Lambda functions",
@@ -63,17 +63,17 @@ export class TomayakenStack extends Stack {
     });
     const dbSg = new ec2.SecurityGroup(this, "DatabaseSecurityGroup", {
       vpc,
-      description: "Tomayaken RDS (PostgreSQL from Lambda only)",
+      description: "Tomayaken Aurora (PostgreSQL from Lambda only)",
       allowAllOutbound: false,
     });
 
-    // --- DB: RDS for PostgreSQL ---
+    // --- DB: Aurora Serverless v2（PostgreSQL） ---
     // パスワードは英数字だけにする。DATABASE_URL に埋め込むので、
     // URL で特別な意味を持つ文字（@ / : ? # % など）を避ける。
     // excludeCharacters で記号を全部除くと、Secrets Manager が「各種類の文字を最低1文字含める」
     // 既定のせいで生成に失敗するので、excludePunctuation を使う（そのため Secret を自分で作る）
     const dbSecret = new secretsmanager.Secret(this, "DatabaseSecret", {
-      description: "Tomayaken RDS master credentials",
+      description: "Tomayaken Aurora master credentials",
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: DB_USER }),
         generateStringKey: "password",
@@ -82,26 +82,27 @@ export class TomayakenStack extends Stack {
       },
       removalPolicy: RemovalPolicy.DESTROY,
     });
-    const db = new rds.DatabaseInstance(this, "Database", {
-      engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_17,
+    // スタックは残したまま、使っていない間は DB が自動で休む（0 ACU）。休んでいる間は
+    // ストレージ代だけになる。休んだあとの最初の接続は、起き上がるまで 15 秒ほど待つ
+    // （docs/infrastructure.md「運用」）
+    const db = new rds.DatabaseCluster(this, "Database", {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: rds.AuroraPostgresEngineVersion.VER_17_9,
       }),
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.T4G,
-        ec2.InstanceSize.MICRO,
-      ),
+      writer: rds.ClusterInstance.serverlessV2("Writer"),
+      serverlessV2MinCapacity: 0,
+      serverlessV2MaxCapacity: 2,
+      // デモの途中の短い空き時間では休まないよう、既定（5 分）より長めにする
+      serverlessV2AutoPauseDuration: Duration.minutes(10),
       vpc,
       vpcSubnets: isolated,
       securityGroups: [dbSg],
-      multiAz: false,
-      publiclyAccessible: false,
-      databaseName: DB_NAME,
+      defaultDatabaseName: DB_NAME,
       credentials: rds.Credentials.fromSecret(dbSecret),
-      allocatedStorage: 20,
       storageEncrypted: true,
-      // デモ環境なのでバックアップは取らず、削除時にデータごと消す
-      backupRetention: Duration.days(0),
-      deleteAutomatedBackups: true,
+      // Aurora は自動バックアップを止められないので最短の 1 日にする。
+      // デモ環境なので、削除時は最終スナップショットを取らずにデータごと消す
+      backup: { retention: Duration.days(1) },
       deletionProtection: false,
       removalPolicy: RemovalPolicy.DESTROY,
     });
@@ -113,10 +114,10 @@ export class TomayakenStack extends Stack {
       `postgresql://${DB_USER}:`,
       dbSecret.secretValueFromJson("password").unsafeUnwrap(),
       "@",
-      db.dbInstanceEndpointAddress,
+      db.clusterEndpoint.hostname,
       ":",
-      db.dbInstanceEndpointPort,
-      // RDS の PostgreSQL は SSL 必須。VPC 内の通信なので証明書の検証は省く
+      db.clusterEndpoint.port.toString(),
+      // SSL で接続する。VPC 内の通信なので証明書の検証は省く
       `/${DB_NAME}?sslmode=no-verify`,
     ]);
 

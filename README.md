@@ -165,7 +165,7 @@ GitHub Actions（`.github/workflows/ci.yml`）で、PR と main への push ご�
 
 ## 本番環境（AWS）
 
-デモ用の本番環境は AWS CDK（`infra/`）で作る。使わない間は `cdk destroy` で消し、デモの前に `cdk deploy` で作り直す。手順は [docs/infrastructure.md](docs/infrastructure.md#デプロイと削除の手順) を参照。
+デモ用の本番環境は AWS CDK（`infra/`）で作る。DB は Aurora Serverless v2 で、使わない間は自動で休むので、環境は消さずに置いておける。手順は [docs/infrastructure.md](docs/infrastructure.md#デプロイと削除の手順) を参照。
 
 ## 初期データ（seed）
 
