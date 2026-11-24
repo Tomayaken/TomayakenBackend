@@ -19,7 +19,13 @@ export const ShelterSupplyItems =
 
 export const SupplyOperationRequest = z
   .object({
-    quantity: z.number().int().positive().openapi({ example: 20 }),
+    // 在庫は integer 列なので、1回の数量に上限を設ける
+    quantity: z
+      .number()
+      .int()
+      .positive()
+      .max(1_000_000)
+      .openapi({ example: 20 }),
     operatorName: z.string().trim().max(100).optional().openapi({
       description: "管理画面で入力された運営者名（自己申告）",
       example: "受付担当A",

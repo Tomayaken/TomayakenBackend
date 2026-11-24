@@ -1,5 +1,4 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../../errors/app-error.js";
 import { errorResponses, jsonBody, jsonContent } from "../../schemas/common.js";
 import { ShelterIdParam, ShelterSupplyParams } from "../../schemas/params.js";
 import {
@@ -8,6 +7,7 @@ import {
   SupplyTransactionItems,
   SupplyTransactionQuery,
 } from "../../schemas/supply.js";
+import * as supplyService from "../../services/supply-service.js";
 import { adminSecurity, createRouter } from "../router.js";
 
 const supplyIn = createRoute({
@@ -74,6 +74,27 @@ const listTransactions = createRoute({
 });
 
 export const adminSupplyRoutes = createRouter()
-  .openapi(supplyIn, () => notImplemented())
-  .openapi(supplyOut, () => notImplemented())
-  .openapi(listTransactions, () => notImplemented());
+  .openapi(supplyIn, async (c) => {
+    const { shelterId, supplyId } = c.req.valid("param");
+    const body = c.req.valid("json");
+    return c.json(
+      await supplyService.operateSupply("IN", shelterId, supplyId, body),
+      200,
+    );
+  })
+  .openapi(supplyOut, async (c) => {
+    const { shelterId, supplyId } = c.req.valid("param");
+    const body = c.req.valid("json");
+    return c.json(
+      await supplyService.operateSupply("OUT", shelterId, supplyId, body),
+      200,
+    );
+  })
+  .openapi(listTransactions, async (c) => {
+    const { shelterId } = c.req.valid("param");
+    const items = await supplyService.listTransactions(
+      shelterId,
+      c.req.valid("query"),
+    );
+    return c.json({ items }, 200);
+  });

@@ -3,6 +3,7 @@ import { app } from "../src/app.js";
 import { openApiConfig } from "../src/openapi.js";
 
 const USER_ID = "01a19fe0-339a-77ad-8adf-2fd52c8110fa";
+const SHELTER_ID = "01a19fe0-339d-7651-b398-8ae97d2d07cb";
 
 beforeAll(() => {
   process.env.ADMIN_TOKEN = "test-admin-token";
@@ -68,7 +69,19 @@ describe("共通のエラー形式", () => {
   });
 
   it("未実装のエンドポイントは NOT_IMPLEMENTED", async () => {
-    const res = await app.request(`/api/v1/shelters/${SHELTER_ID}/supplies`);
+    // 代理チェックイン（#19、優先度低）は最後まで未実装で残る見込みなので例に使う。
+    // DBを使わずに 501 まで届く（管理者認証と入力の検証だけを通る）
+    const res = await app.request(
+      `/api/v1/admin/shelters/${SHELTER_ID}/checkins`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-admin-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "山田花子" }),
+      },
+    );
     expect(res.status).toBe(501);
     expect(await res.json()).toMatchObject({
       error: { code: "NOT_IMPLEMENTED" },

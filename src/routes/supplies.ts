@@ -1,8 +1,8 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../errors/app-error.js";
 import { errorResponses, jsonContent } from "../schemas/common.js";
 import { ShelterIdParam } from "../schemas/params.js";
 import { ShelterSupplyItems } from "../schemas/supply.js";
+import * as supplyService from "../services/supply-service.js";
 import { createRouter } from "./router.js";
 
 const listShelterSupplies = createRoute({
@@ -20,6 +20,11 @@ const listShelterSupplies = createRoute({
   },
 });
 
-export const supplyRoutes = createRouter().openapi(listShelterSupplies, () =>
-  notImplemented(),
+export const supplyRoutes = createRouter().openapi(
+  listShelterSupplies,
+  async (c) => {
+    const { shelterId } = c.req.valid("param");
+    const items = await supplyService.listShelterSupplies(shelterId);
+    return c.json({ items }, 200);
+  },
 );

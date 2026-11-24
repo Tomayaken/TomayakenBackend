@@ -391,16 +391,21 @@ Request:
 }
 ```
 
-- `quantity`: 1以上の整数（必須）
-- `operatorName`, `note`: 任意
+- `quantity`: 1以上、1,000,000以下の整数（必須）
+- `operatorName`, `note`: 任意。空文字は `null` として記録する
 - 在庫更新と履歴の記録を1トランザクションで行う（[database.md](./database.md#物資の入庫配布)）。
 - activeな災害があれば履歴に紐づける。なくても入庫・配布はできる（平時の備蓄）。
+- 在庫行がない物資への入庫は、在庫0から数える。配布は在庫0として扱うので `INSUFFICIENT_SUPPLY` になる。
 
 Response: 更新後の在庫（`{ id, name, unit, quantity }`）
 
-エラー: `INVALID_REQUEST` (400), `SHELTER_NOT_FOUND` / `SUPPLY_NOT_FOUND` (404), `INSUFFICIENT_SUPPLY` (409, 配布のみ)
+エラー: `INVALID_REQUEST` (400), `SHELTER_NOT_FOUND` / `SUPPLY_NOT_FOUND` (404), `INSUFFICIENT_SUPPLY` (409, 配布のみ。`details` に `{ "available": 現在の在庫, "requested": 要求数 }`)
 
 ### `GET /admin/shelters/:shelterId/supply-transactions`
+
+新しい順（`createdAt` の降順）に返す。
+
+エラー: `SHELTER_NOT_FOUND` (404)
 
 | Query | 説明 |
 | --- | --- |
