@@ -1,5 +1,4 @@
 import { createRoute } from "@hono/zod-openapi";
-import { notImplemented } from "../errors/app-error.js";
 import { errorResponses, itemsOf, jsonContent } from "../schemas/common.js";
 import { ShelterIdParam } from "../schemas/params.js";
 import { NearbyQuery, NearbyShelter, Shelter } from "../schemas/shelter.js";
@@ -61,7 +60,14 @@ export const shelterRoutes = createRouter()
     return c.json({ items }, 200);
   })
   // /shelters/{shelterId} より先に登録する（"nearby" を ID として扱わせない）
-  .openapi(listNearbyShelters, () => notImplemented())
+  .openapi(listNearbyShelters, async (c) => {
+    const { latitude, longitude, limit } = c.req.valid("query");
+    const items = await shelterService.listNearbyShelters(
+      { latitude, longitude },
+      limit,
+    );
+    return c.json({ items }, 200);
+  })
   .openapi(getShelter, async (c) => {
     const { shelterId } = c.req.valid("param");
     return c.json(await shelterService.getShelter(shelterId), 200);

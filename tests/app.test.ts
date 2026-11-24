@@ -83,11 +83,18 @@ describe("共通のエラー形式", () => {
 });
 
 describe("近くの避難所（GET /shelters/nearby）", () => {
-  it("/shelters/{shelterId} ではなく nearby のルートに届く", async () => {
+  it("緯度・経度が空なら INVALID_REQUEST（0 とみなさない）", async () => {
     const res = await app.request(
-      "/api/v1/shelters/nearby?latitude=35.68&longitude=139.76",
+      "/api/v1/shelters/nearby?latitude=&longitude=",
     );
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(400);
+  });
+
+  it("緯度・経度が数値でなければ INVALID_REQUEST", async () => {
+    const res = await app.request(
+      "/api/v1/shelters/nearby?latitude=abc&longitude=139.76",
+    );
+    expect(res.status).toBe(400);
   });
 
   it("現在地がなければ INVALID_REQUEST", async () => {
