@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client.js";
 import {
-  disasters,
   type SUPPLY_TRANSACTION_TYPES,
   shelterSupplies,
   supplies,
@@ -84,20 +83,6 @@ export async function updateStock(
         eq(shelterSupplies.supplyId, supplyId),
       ),
     );
-}
-
-/**
- * active な災害のIDを返す。なければ undefined。
- * TODO: Disaster の実装（PR #24）がマージされたら disaster-repository の関数に寄せる
- */
-export async function findActiveDisasterId(
-  db: Executor,
-): Promise<string | undefined> {
-  const rows = await db
-    .select({ id: disasters.id })
-    .from(disasters)
-    .where(eq(disasters.status, "active"));
-  return rows[0]?.id;
 }
 
 export async function insertTransaction(

@@ -1,5 +1,6 @@
 import { getDb } from "../db/client.js";
 import { AppError } from "../errors/app-error.js";
+import * as disasterRepository from "../repositories/disaster-repository.js";
 import * as shelterRepository from "../repositories/shelter-repository.js";
 import type {
   ShelterSupplyRow,
@@ -61,7 +62,7 @@ export async function operateSupply(
     await supplyRepository.updateStock(tx, shelterId, supplyId, next);
 
     // active な災害がなくても入庫・配布はできる（平時の備蓄）
-    const disasterId = await supplyRepository.findActiveDisasterId(tx);
+    const disaster = await disasterRepository.findActive(tx);
     await supplyRepository.insertTransaction(tx, {
       shelterId,
       supplyId,
@@ -69,7 +70,7 @@ export async function operateSupply(
       quantity,
       operatorName: operatorName || null,
       note: note || null,
-      disasterId: disasterId ?? null,
+      disasterId: disaster?.id ?? null,
     });
     return { ...supply, quantity: next };
   });
