@@ -31,7 +31,7 @@
 | 区分 | ヘッダー | 失敗時 |
 | --- | --- | --- |
 | 公開 | なし | — |
-| 利用者 | `X-User-Id: <userId>` | ヘッダーなし・存在しないユーザー → `401 UNAUTHORIZED` |
+| 利用者 | `X-User-Id: <userId>` | ヘッダーなし・存在しないユーザー・端末を持たない家族のID → `401 UNAUTHORIZED` |
 | 管理者 | `Authorization: Bearer <ADMIN_TOKEN>` | トークン不一致 → `401 UNAUTHORIZED` |
 
 管理者APIはすべて `/api/v1/admin/` 配下に置き、middlewareをパス単位で適用する。
@@ -198,7 +198,7 @@ Request: `{ "name": "山田太郎" }`
 }
 ```
 
-エラー: `INVALID_REQUEST` (400)
+エラー: `INVALID_REQUEST` (400), `FORBIDDEN` (403, 端末を持たない家族のID)
 
 ### `GET /me/household`
 
