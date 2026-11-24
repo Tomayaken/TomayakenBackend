@@ -325,6 +325,9 @@ Response: 更新後のチェックイン
 | --- | --- |
 | `status=active` | 滞在中のみ（省略時はactive災害の全件） |
 
+- activeな災害のチェックインだけを、到着順（`checkedInAt` の昇順）で返す。
+- activeな災害がなければ、エラーにせず空の一覧を返す。
+
 ```json
 {
   "items": [
@@ -349,6 +352,10 @@ Response: 作成したユーザーとチェックイン（`{ "user": {...}, "che
 ### `POST /admin/checkins/:checkinId/checkout`
 
 世帯の制約なしにチェックアウトする。
+
+Response: 更新後のチェックイン
+
+エラー: `CHECKIN_NOT_FOUND` (404), `NOT_CHECKED_IN` (409, チェックアウト済み)
 
 ---
 

@@ -9,6 +9,7 @@ import {
 } from "../../schemas/checkin.js";
 import { errorResponses, jsonBody, jsonContent } from "../../schemas/common.js";
 import { CheckinIdParam, ShelterIdParam } from "../../schemas/params.js";
+import * as checkinService from "../../services/checkin-service.js";
 import { adminSecurity, createRouter } from "../router.js";
 
 const listCheckins = createRoute({
@@ -67,6 +68,16 @@ const proxyCheckout = createRoute({
 });
 
 export const adminCheckinRoutes = createRouter()
-  .openapi(listCheckins, () => notImplemented())
+  .openapi(listCheckins, async (c) => {
+    const { shelterId } = c.req.valid("param");
+    const { status } = c.req.valid("query");
+    const items = await checkinService.listShelterCheckins(shelterId, {
+      activeOnly: status === "active",
+    });
+    return c.json({ items }, 200);
+  })
   .openapi(proxyCheckin, () => notImplemented())
-  .openapi(proxyCheckout, () => notImplemented());
+  .openapi(proxyCheckout, async (c) => {
+    const { checkinId } = c.req.valid("param");
+    return c.json(await checkinService.proxyCheckout(checkinId), 200);
+  });
