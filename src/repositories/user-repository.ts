@@ -57,6 +57,20 @@ export async function insert(
   return row;
 }
 
+/** 名前を更新する。利用者がいなければ undefined */
+export async function updateName(
+  db: Executor,
+  id: string,
+  name: string,
+): Promise<UserRow | undefined> {
+  const [row] = await db
+    .update(users)
+    .set({ name })
+    .where(eq(users.id, id))
+    .returning(userColumns);
+  return row;
+}
+
 /**
  * 利用者を作る。同じ id がすでにあれば名前だけを更新する（世帯は変えない）。
  * 同じ id で同時に呼ばれても、主キーの一意制約で1行にまとまる。

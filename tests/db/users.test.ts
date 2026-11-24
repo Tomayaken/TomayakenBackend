@@ -40,7 +40,9 @@ describe("userService.putUser", () => {
     const user = await userService.putUser(USER_ID, "山田太郎");
     expect(user).toMatchObject({ id: USER_ID, name: "山田太郎" });
     expect(await countRows()).toEqual({ households: 1, users: 1 });
-    expect((await userService.getHousehold(USER_ID)).id).toBe(user.householdId);
+    expect((await userService.getHousehold(user)).members).toEqual([
+      { id: USER_ID, name: "山田太郎" },
+    ]);
   });
 
   it("2回目は名前だけを更新し、世帯は変えない（使わない世帯も残さない）", async () => {
@@ -68,7 +70,7 @@ describe("userService.putUser", () => {
 describe("userService の世帯", () => {
   it("家族を追加すると、同じ世帯のメンバーとして登録順に返る", async () => {
     const me = await userService.putUser(USER_ID, "山田太郎");
-    const member = await userService.addHouseholdMember(USER_ID, "山田花子");
+    const member = await userService.addHouseholdMember(me, "山田花子");
     expect(member).toMatchObject({
       name: "山田花子",
       householdId: me.householdId,
@@ -78,7 +80,7 @@ describe("userService の世帯", () => {
     // 別の世帯の人は含まれない
     await createUser(db, { name: "別の世帯" });
 
-    expect(await userService.getHousehold(USER_ID)).toEqual({
+    expect(await userService.getHousehold(me)).toEqual({
       id: me.householdId,
       members: [
         { id: USER_ID, name: "山田太郎" },

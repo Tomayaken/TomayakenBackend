@@ -23,12 +23,14 @@ export const userAuth = createMiddleware<AppEnv>(async (c, next) => {
       `${USER_ID_HEADER} header is missing or invalid.`,
     );
   }
-  if (!(await userService.findUser(parsed.data))) {
+  const user = await userService.findUser(parsed.data);
+  if (!user) {
     throw new AppError(
       "UNAUTHORIZED",
       `User ${parsed.data} is not registered. Call PUT /users/{userId} first.`,
     );
   }
-  c.set("userId", parsed.data);
+  c.set("userId", user.id);
+  c.set("user", user);
   await next();
 });

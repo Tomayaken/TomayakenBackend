@@ -54,13 +54,10 @@ const getMyCheckins = createRoute({
 
 export const meRoutes = createRouter()
   .openapi(getHousehold, async (c) => {
-    return c.json(await userService.getHousehold(c.var.userId), 200);
+    return c.json(await userService.getHousehold(c.var.user), 200);
   })
   .openapi(addHouseholdMember, async (c) => {
     const { name } = c.req.valid("json");
-    return c.json(
-      await userService.addHouseholdMember(c.var.userId, name),
-      201,
-    );
+    return c.json(await userService.addHouseholdMember(c.var.user, name), 201);
   })
   .openapi(getMyCheckins, () => notImplemented());
