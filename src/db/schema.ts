@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   doublePrecision,
   index,
@@ -86,6 +87,9 @@ export const users = pgTable(
       .notNull()
       .references(() => households.id),
     name: text("name").notNull(),
+    // アプリから自分で登録した利用者（端末を持つ本人）なら true。
+    // 世帯に追加された家族・代理登録は false で、X-User-Id として使えない
+    hasDevice: boolean("has_device").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

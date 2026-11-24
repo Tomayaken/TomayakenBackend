@@ -1042,7 +1042,7 @@
         ],
         "security": [],
         "summary": "利用者登録・名前更新",
-        "description": "アプリが初回起動時に生成したUUIDで利用者を登録する。冪等で、既存なら名前を更新する。新規作成時はその利用者だけの世帯を同時に作る。X-User-Id は不要。",
+        "description": "アプリが初回起動時に生成したUUIDで利用者を登録する。冪等で、既存なら名前を更新する。新規作成時はその利用者だけの世帯を同時に作る。X-User-Id は不要。端末を持たない家族（POST /me/household/members で追加した人）のIDは 403 FORBIDDEN。",
         "parameters": [
           {
             "schema": {
@@ -1078,6 +1078,16 @@
           },
           "400": {
             "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
             "content": {
               "application/json": {
                 "schema": {

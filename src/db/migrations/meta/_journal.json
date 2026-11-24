@@ -15,6 +15,13 @@
       "when": 1794889553242,
       "tag": "0001_gps_shelter_search",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795494035543,
+      "tag": "0002_users_has_device",
+      "breakpoints": true
     }
   ]
 }

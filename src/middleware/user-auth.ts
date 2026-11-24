@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
 import { AppError } from "../errors/app-error.js";
+import * as userService from "../services/user-service.js";
 import type { AppEnv } from "../types.js";
 
 export const USER_ID_HEADER = "X-User-Id";
@@ -9,9 +10,10 @@ const userIdSchema = z.uuid();
 
 /**
  * 利用者の疑似認証（docs/architecture.md「認証方針」）。
- * `X-User-Id` ヘッダーの利用者IDを検証し、`c.var.userId` に設定する。
+ * `X-User-Id` ヘッダーの利用者IDが登録済みかを確かめ、`c.var.userId` に設定する。
+ * 形式が正しくない、未登録（PUT /users/:userId をしていない）、
+ * または端末を持たない家族のIDなら 401。
  *
- * TODO: User APIの実装時に、利用者がDBに存在するかの確認を追加する。
  * 将来はマイナンバーカードやCognitoのJWT検証に差し替える。
  */
 export const userAuth = createMiddleware<AppEnv>(async (c, next) => {
@@ -22,6 +24,14 @@ export const userAuth = createMiddleware<AppEnv>(async (c, next) => {
       `${USER_ID_HEADER} header is missing or invalid.`,
     );
   }
-  c.set("userId", parsed.data);
+  const user = await userService.findAppUser(parsed.data);
+  if (!user) {
+    throw new AppError(
+      "UNAUTHORIZED",
+      `User ${parsed.data} is not registered from the app. Call PUT /users/{userId} first.`,
+    );
+  }
+  c.set("userId", user.id);
+  c.set("user", user);
   await next();
 });

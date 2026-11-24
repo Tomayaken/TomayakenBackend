@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "has_device" boolean DEFAULT false NOT NULL;

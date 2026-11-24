@@ -3,16 +3,9 @@ import { app } from "../src/app.js";
 import { openApiConfig } from "../src/openapi.js";
 
 const USER_ID = "01a19fe0-339a-77ad-8adf-2fd52c8110fa";
-const SHELTER_ID = "01a19fe0-339d-7651-b398-8ae97d2d07cb";
 
 beforeAll(() => {
   process.env.ADMIN_TOKEN = "test-admin-token";
-});
-
-const json = (body: unknown) => ({
-  method: "POST",
-  headers: { "Content-Type": "application/json", "X-User-Id": USER_ID },
-  body: JSON.stringify(body),
 });
 
 describe("OpenAPI", () => {
@@ -39,10 +32,11 @@ describe("共通のエラー形式", () => {
   });
 
   it("検証エラーは INVALID_REQUEST と項目ごとの理由を返す", async () => {
-    const res = await app.request(
-      "/api/v1/me/household/members",
-      json({ name: "" }),
-    );
+    const res = await app.request(`/api/v1/users/${USER_ID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "" }),
+    });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({
       error: {
@@ -124,13 +118,7 @@ describe("利用者の認証（X-User-Id）", () => {
     expect(res.status).toBe(401);
   });
 
-  it("正しいヘッダーなら認証を通過する", async () => {
-    const res = await app.request(
-      `/api/v1/shelters/${SHELTER_ID}/checkins`,
-      json({}),
-    );
-    expect(res.status).toBe(501);
-  });
+  // 登録済みかどうかの確認はDBを使うので tests/db/users.test.ts で確かめる
 });
 
 describe("管理者の認証（Bearer）", () => {
