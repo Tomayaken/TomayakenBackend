@@ -26,12 +26,6 @@ const REPO_ROOT = join(import.meta.dirname, "..", "..");
 const DB_NAME = "tomayaken";
 const DB_USER = "tomayaken";
 
-/**
- * パスワードを英数字だけにするため、ASCII の記号をすべて除く。
- * DATABASE_URL に埋め込むので、URL で特別な意味を持つ文字（@ / : ? # % など）を避ける。
- */
-const ALL_PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ ";
-
 export type TomayakenStackProps = StackProps & {
   /** CloudFront（管理画面）のほかに CORS で許可する Origin。例: ローカルの Vite */
   extraCorsOrigins?: string[];
@@ -74,6 +68,20 @@ export class TomayakenStack extends Stack {
     });
 
     // --- DB: RDS for PostgreSQL ---
+    // パスワードは英数字だけにする。DATABASE_URL に埋め込むので、
+    // URL で特別な意味を持つ文字（@ / : ? # % など）を避ける。
+    // excludeCharacters で記号を全部除くと、Secrets Manager が「各種類の文字を最低1文字含める」
+    // 既定のせいで生成に失敗するので、excludePunctuation を使う（そのため Secret を自分で作る）
+    const dbSecret = new secretsmanager.Secret(this, "DatabaseSecret", {
+      description: "Tomayaken RDS master credentials",
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ username: DB_USER }),
+        generateStringKey: "password",
+        passwordLength: 32,
+        excludePunctuation: true,
+      },
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
     const db = new rds.DatabaseInstance(this, "Database", {
       engine: rds.DatabaseInstanceEngine.postgres({
         version: rds.PostgresEngineVersion.VER_17,
@@ -88,9 +96,7 @@ export class TomayakenStack extends Stack {
       multiAz: false,
       publiclyAccessible: false,
       databaseName: DB_NAME,
-      credentials: rds.Credentials.fromGeneratedSecret(DB_USER, {
-        excludeCharacters: ALL_PUNCTUATION,
-      }),
+      credentials: rds.Credentials.fromSecret(dbSecret),
       allocatedStorage: 20,
       storageEncrypted: true,
       // デモ環境なのでバックアップは取らず、削除時にデータごと消す
@@ -101,12 +107,11 @@ export class TomayakenStack extends Stack {
     });
     db.connections.allowDefaultPortFrom(lambdaSg, "Lambda to PostgreSQL");
 
-    if (!db.secret) throw new Error("RDS secret was not generated");
     // Lambda は Secrets Manager に接続できない（NAT も VPC Endpoint もない）ので、
     // デプロイ時に CloudFormation の動的参照で値を埋め込む（docs/infrastructure.md「環境変数」）
     const databaseUrl = Fn.join("", [
       `postgresql://${DB_USER}:`,
-      db.secret.secretValueFromJson("password").unsafeUnwrap(),
+      dbSecret.secretValueFromJson("password").unsafeUnwrap(),
       "@",
       db.dbInstanceEndpointAddress,
       ":",
